@@ -14,7 +14,7 @@ The others loggers with more functionalities have a slower performance,
 as expected, but slog have a good set of features with a performance better
 than Logrus.
 
-Benchmark name | N | time | rate
+Benchmark name | N | Time | Rate
 --------------------|-------|----------|-----------
 BenchmarkPureGolog-4|1000000|1758 ns/op|10.24 MB/s
 BenchmarkLogrus-4|3000000|5658 ns/op|3.18 MB/s
