@@ -17,9 +17,7 @@ than Logrus.
 BenchmarkPureGolog-4|1000000|1758 ns/op|10.24 MB/s
 --------------------|-------|----------|-----------
 BenchmarkLogrus-4|3000000|5658 ns/op|3.18 MB/s
---------------------|-------|----------|-----------
 BenchmarkSlogNullFile-4|1000000|2297 ns/op|7.83 MB/s
---------------------|-------|----------|-----------
 BenchmarkSlogJSONNullFile-4|1000000|2494 ns/op|7.21 MB/s
 
 But slog can't be used like a high-performance logger. 
