@@ -38,7 +38,7 @@ type Logger interface {
 // Level type represents a log level.
 type Level uint8
 
-// This constants defines the levels avaliable to the logger.
+// This constants defines the levels available to the logger.
 const (
 	ProtoPrio Level = iota //More priority
 	DebugPrio
@@ -175,7 +175,7 @@ func (l *Log) SetTimeZone() {
 	l.zoneHour, l.zoneMin, l.zoneSig = timeZone()
 	l.zoneBuf = make([]byte, 6)
 	if l.zoneSig {
-		// TODO: check if UTC is + or -. Check if East UTC is realy + before the offset.
+		// TODO: check if UTC is + or -. Check if East UTC is really + before the offset.
 		l.zoneBuf = append(l.zoneBuf, '+')
 	} else {
 		l.zoneBuf = append(l.zoneBuf, '-')
