@@ -132,12 +132,10 @@ type Log struct {
 	Tags      *tags
 	Message   string
 	File      string
-	//Pkg       string
-	//Func      string
-	zoneHour int
-	zoneMin  int
-	zoneSig  bool
-	zoneBuf  []byte
+	zoneHour  int
+	zoneMin   int
+	zoneSig   bool
+	zoneBuf   []byte
 }
 
 // DebugInfo populates the Log struct with the debug informations.
@@ -147,7 +145,6 @@ func (l *Log) DebugInfo(level int) {
 	}
 	var ok bool
 	var line int
-	//var pc uintptr
 	_, l.File, line, ok = runtime.Caller(level)
 	if ok {
 		s := strings.Split(l.File, "/")
@@ -157,12 +154,6 @@ func (l *Log) DebugInfo(level int) {
 		} else {
 			l.File = s[0] + ":" + strconv.Itoa(line)
 		}
-		//f := runtime.FuncForPC(pc)
-		//l.Func = f.Name()
-		//i := strings.LastIndex(l.Func, ".")
-		//if i > -1 {
-		//	l.Pkg = l.Func[:i]
-		//}
 	}
 }
 
@@ -221,7 +212,6 @@ func Itoa(buf *[]byte, i int, wid int) {
 		bp--
 		i = q
 	}
-	// i < 10
 	b[bp] = byte('0' + i)
 	*buf = append(*buf, b[bp:]...)
 }
@@ -279,7 +269,6 @@ func (l *Slog) Init(domain string, numLogs int) error {
 			buf := Pool.Get().([]byte)
 			buf = append(buf, l.Log.Domain...)
 			buf = append(buf, sep...)
-			//buf = append(buf, []byte(l.Log.Timestamp.Format(l.TimeLayout))...)
 			FormatTime(&buf, l.Log.Timestamp)
 			buf = append(buf, sep...)
 			buf = append(buf, l.Log.Priority.Byte()...)
@@ -352,7 +341,7 @@ func (l *Slog) Init(domain string, numLogs int) error {
 	return nil
 }
 
-// copy copy only the Slog struct the Log field only the pointer is copied
+// copy only the Slog struct the Log field only the pointer is copied
 func (l *Slog) copy() *Slog {
 	if l.cp {
 		return l

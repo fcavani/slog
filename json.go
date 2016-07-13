@@ -23,19 +23,6 @@ func formatJSONTime(buf *[]byte, t time.Time) {
 	nano := t.Nanosecond()
 	*buf = append(*buf, '.')
 	Itoa(buf, nano, 9)
-	// _, offset := t.Zone() //offset is secods East UTC
-	// if offset < 0 {
-	// 	offset = -offset
-	// 	*buf = append(*buf, '-')
-	// } else {
-	// 	// TODO: check if UTC is + or -. Check if East UTC is realy + before the offset.
-	// 	*buf = append(*buf, '+')
-	// }
-	// h := int(math.Floor(float64(offset) / 3600.0))
-	// s := int(math.Floor(float64(offset%3600) / 60.0))
-	// Itoa(buf, h, 2)
-	// *buf = append(*buf, ':')
-	// Itoa(buf, s, 2)
 }
 
 var domain = []byte("{\"Domain\":\"")
@@ -48,10 +35,7 @@ var closeing = []byte("\"}\n")
 
 // JSON convert a log entry to json.
 func JSON(l *Slog) ([]byte, error) {
-	//2016-03-24T21:26:37.556839791-03:00
-	//["tag1","tag2"]
 	buf := Pool.Get().([]byte)
-	//JSONTemplate := `{"Domain":%v,"Priority":%v,"Timestamp":"%v","Tags":%d,"Message":"%d","File":"%d"}` + "\n"
 	buf = append(buf, domain...)
 	buf = append(buf, l.Log.Domain...)
 	buf = append(buf, prio...)

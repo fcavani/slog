@@ -11,8 +11,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/fcavani/e"
-
-	. "projects2/slog"
+	. "github.com/fcavani/slog"
 )
 
 var msg = "benchmark log test"
