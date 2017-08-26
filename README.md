@@ -1,4 +1,4 @@
-#Slog#
+# Slog
 
 [![Build Status](https://travis-ci.org/fcavani/log.svg?branch=master)](https://travis-ci.org/fcavani/slog) [![GoDoc](https://godoc.org/github.com/fcavani/log?status.svg)](https://godoc.org/github.com/fcavani/slog)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fcavani/slog)](https://goreportcard.com/report/github.com/fcavani/slog)
@@ -9,7 +9,7 @@ implement differents formatters and committers. It´s simple and easy to
 use. Import the package, use the free functions and you will have a logger
 to the console. If you want to log to a file change the writer.
 
-##Performance##
+## Performance
 
 You can see bellow a simple comparison of some loggers.
 First is the baseline logger, the go logger, with is simple but fast.
@@ -29,7 +29,7 @@ Some optimizations will be needed before slog can be used like a
 high-performance logger. I need to get deeper into go and learn
 to do some optimizations to achieve a good performance.
 
-##Bottlenecks##
+## Bottlenecks
 
 Slog have 2 main bottlenecks:
 
@@ -42,12 +42,12 @@ For the io bottleneck there´s no safe solution besides buy a fast hardware. The
 in memory approach may be good for some tasks but its not safe if something
 wrong happen.
 
-##TODO##
+## TODO
 
 - Need to check all code for allocations and minimize that.
 - A more flexible way to deal with date and time.
 
-##Conclusion##
+## Conclusion
 
 Slog is a logger with more features and have a good performance but I need
 to make some optimizations to make it more fast.
