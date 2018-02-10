@@ -20,6 +20,31 @@ var l = int64(len(msg))
 func TestPrint(t *testing.T) {
 	logger := &Slog{
 		Writter: os.Stdout,
+		Level:   DebugPrio,
+	}
+	err := logger.Init("teste", 1)
+	if err != nil {
+		t.Fatal(e.Trace(e.Forward(err)))
+	}
+
+	logger = logger.Di()
+
+	logger.Tag("tag1", "tag2").Println(msg)
+	logger.Tag("tag1", "tag2").ErrorLevel().Di().Println(msg)
+	logger.Tag("tag1", "tag2").ErrorLevel().Println(msg)
+	logger.Tag("tag1", "tag2").ErrorLevel().NoDi().Println(msg)
+
+	logger = logger.DebugLevel()
+
+	logger.Tag("tag1", "tag2").Println(msg)
+
+}
+
+func TestPrintJSON(t *testing.T) {
+	logger := &Slog{
+		Writter:   os.Stdout,
+		Formatter: JSON,
+		Level:     DebugPrio,
 	}
 	err := logger.Init("teste", 1)
 	if err != nil {
@@ -28,16 +53,43 @@ func TestPrint(t *testing.T) {
 	logger.Tag("tag1", "tag2").ErrorLevel().Di().Println(msg)
 }
 
-func TestPrintJSON(t *testing.T) {
+func TestPrintLevel(t *testing.T) {
 	logger := &Slog{
-		Writter:   os.Stdout,
-		Formatter: JSON,
+		Writter: os.Stdout,
+		Level:   DebugPrio,
 	}
 	err := logger.Init("teste", 1)
 	if err != nil {
 		t.Fatal(e.Trace(e.Forward(err)))
 	}
-	logger.Tag("tag1", "tag2").ErrorLevel().Di().Println(msg)
+
+	logger.DebugLevel().Println(msg)
+
+	// err = logger.Close()
+	// if err != nil {
+	// 	t.Fatal(e.Trace(e.Forward(err)))
+	// }
+
+	logger = &Slog{
+		Writter: os.Stdout,
+		Level:   InfoPrio,
+	}
+	err = logger.Init("teste", 1)
+	if err != nil {
+		t.Fatal(e.Trace(e.Forward(err)))
+	}
+
+	//logger.SetLevel(InfoPrio)
+
+	logger.DebugLevel().Println(msg) //Não deveria aparecer
+
+	logger.InfoLevel().Println("info")
+
+	// err = logger.Close()
+	// if err != nil {
+	// 	t.Fatal(e.Trace(e.Forward(err)))
+	// }
+
 }
 
 func BenchmarkPureGolog(b *testing.B) {
@@ -73,6 +125,7 @@ func BenchmarkSlogNullFile(b *testing.B) {
 	}
 	logger := &Slog{
 		Writter: file,
+		Level:   DebugPrio,
 	}
 	err = logger.Init("teste", 1)
 	if err != nil {
@@ -93,6 +146,7 @@ func BenchmarkSlogJSONNullFile(b *testing.B) {
 	logger := &Slog{
 		Writter:   file,
 		Formatter: JSON,
+		Level:     DebugPrio,
 	}
 	err = logger.Init("teste", 1)
 	if err != nil {

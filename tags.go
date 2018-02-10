@@ -11,6 +11,13 @@ func newTags(legth int) *tags {
 	return &t
 }
 
+func (t *tags) copy() *tags {
+	dst := make([]string, len(*t))
+	copy(dst, *t)
+	tdst := tags(dst)
+	return &tdst
+}
+
 func (t tags) String() (str string) {
 	for i := 0; i < len(t); i++ {
 		str += t[i] + " "
