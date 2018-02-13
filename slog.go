@@ -210,7 +210,7 @@ func (l *Log) di(deep int) {
 	if l.File != "" {
 		return
 	}
-	l.File = ""
+	//l.File = ""
 	if l.DiFn != nil {
 		l.File = l.DiFn(deep)
 	}
@@ -223,9 +223,10 @@ type Slog struct {
 	Commit    func(l *Slog)
 	Writter   io.WriteCloser
 	Log       *Log
+	Exiter    func(int)
 	logPool   *sync.Pool
 	once      sync.Once
-	lck       sync.Mutex
+	Lck       sync.Mutex
 	cp        bool
 }
 
@@ -318,8 +319,10 @@ func (l *Slog) Init(domain string, numLogs int) error {
 			buf = append(buf, sep...)
 			buf = append(buf, l.Log.Priority.Byte()...)
 			buf = append(buf, sep...)
-			buf = append(buf, []byte(l.Log.Tags.String())...)
-			buf = append(buf, sepTags...)
+			if len(*l.Log.Tags) > 0 {
+				buf = append(buf, []byte(l.Log.Tags.String())...)
+				buf = append(buf, sepTags...)
+			}
 			if l.Log.File != "" {
 				buf = append(buf, []byte(l.Log.File)...)
 				buf = append(buf, sep...)
@@ -338,26 +341,29 @@ func (l *Slog) Init(domain string, numLogs int) error {
 				l.logPool.Put(l)
 			}()
 			// If level is less than Priority discart the log entry
-			//fmt.Println(l.Log.Priority, l.Level)
 			if l.Log.Priority >= l.Level {
 				l.Log.Timestamp = time.Now()
 				buf, err := l.Formatter(l)
 				if err != nil {
 					//TODO: Give to the user a nice error message.
+					println("SLOG writer failed:", err)
 					return
 				}
-				l.lck.Lock()
+				l.Lck.Lock()
 				_, err = l.Writter.Write(buf)
 				if err != nil {
 					println("SLOG writer failed:", err)
 				}
 				Pool.Put(buf[:0])
-				l.lck.Unlock()
+				l.Lck.Unlock()
 			}
 		}
 	}
 	if l.Writter == nil {
 		l.Writter = os.Stdout
+	}
+	if l.Exiter == nil {
+		l.Exiter = os.Exit
 	}
 	l.once.Do(func() {
 		l.logPool = new(sync.Pool)
@@ -375,6 +381,7 @@ func (l *Slog) Init(domain string, numLogs int) error {
 				Formatter: l.Formatter,
 				Commit:    l.Commit,
 				Writter:   l.Writter,
+				Exiter:    l.Exiter,
 				Log:       log,
 				logPool:   l.logPool,
 			}
@@ -393,6 +400,7 @@ func (l *Slog) Init(domain string, numLogs int) error {
 				Formatter: l.Formatter,
 				Commit:    l.Commit,
 				Writter:   l.Writter,
+				Exiter:    l.Exiter,
 				Log:       log,
 				logPool:   l.logPool,
 			})
@@ -413,6 +421,10 @@ func (l *Slog) copy() *Slog {
 
 func (l *Slog) dup() *Slog {
 	out := l.logPool.Get().(*Slog)
+	out.Writter = l.Writter
+	out.Level = l.Level
+	out.Formatter = l.Formatter
+	out.Commit = l.Commit
 	out.Log = l.Log.copy()
 	return out
 }
@@ -425,7 +437,6 @@ func (l *Slog) dup() *Slog {
 // ProtoLevel set the log level to protocol
 func (l *Slog) ProtoLevel() *Slog {
 	l = l.dup()
-	l.Log.di(3)
 	l.Log.Priority = ProtoPrio
 	return l
 }
@@ -433,7 +444,6 @@ func (l *Slog) ProtoLevel() *Slog {
 // DebugLevel set the log level to debug
 func (l *Slog) DebugLevel() *Slog {
 	l = l.dup()
-	l.Log.di(3)
 	l.Log.Priority = DebugPrio
 	return l
 }
@@ -441,7 +451,6 @@ func (l *Slog) DebugLevel() *Slog {
 // InfoLevel set the log level to info
 func (l *Slog) InfoLevel() *Slog {
 	l = l.dup()
-	l.Log.di(3)
 	l.Log.Priority = InfoPrio
 	return l
 }
@@ -449,7 +458,6 @@ func (l *Slog) InfoLevel() *Slog {
 // ErrorLevel set the log level to error
 func (l *Slog) ErrorLevel() *Slog {
 	l = l.dup()
-	l.Log.di(3)
 	l.Log.Priority = ErrorPrio
 	return l
 }
@@ -540,7 +548,7 @@ func (l *Slog) Fatal(v ...interface{}) {
 	l.Log.Priority = FatalPrio
 	l.Commit(l)
 	l.Writter.Close()
-	os.Exit(1)
+	l.Exiter(1)
 }
 
 // Fatalf print a formated log entry to the destine and exit with 1.
@@ -551,7 +559,7 @@ func (l *Slog) Fatalf(s string, v ...interface{}) {
 	l.Log.Priority = FatalPrio
 	l.Commit(l)
 	l.Writter.Close()
-	os.Exit(1)
+	l.Exiter(1)
 }
 
 // Fatalln print a log entry to the destine and exit with 1.
@@ -562,7 +570,7 @@ func (l *Slog) Fatalln(v ...interface{}) {
 	l.Log.Priority = FatalPrio
 	l.Commit(l)
 	l.Writter.Close()
-	os.Exit(1)
+	l.Exiter(1)
 }
 
 // Panic print a log entry to the destine and call panic.
@@ -595,7 +603,7 @@ func (l *Slog) Panicln(v ...interface{}) {
 	l.Log.Priority = PanicPrio
 	l.Commit(l)
 	l.Writter.Close()
-	panic(l.Log.Message)
+	panic(l.Log.Message[:len(l.Log.Message)-1])
 }
 
 // GoPanic is use when recover from a panic and the panic must be logged
@@ -613,7 +621,10 @@ func (l *Slog) GoPanic(r interface{}, stack []byte, cont bool) {
 	l.Log.Message += "\n{" + string(stack) + "}"
 	l.Log.Priority = PanicPrio
 	l.Commit(l)
-	l.Writter.Close()
+	if !cont {
+		l.Writter.Close()
+		l.Exiter(1)
+	}
 }
 
 // Close the logger.
@@ -765,7 +776,7 @@ func GoPanic(r interface{}, stack []byte, cont bool) {
 // RecoverBufferStack amont of buffer to store the stack.
 var RecoverBufferStack = 4096
 
-// Recover from panic and log the stack. If notexit is false, call os.Exit(1),
+// Recover from panic and log the stack. If notexit is false, call l.Exiter(1),
 // if not continue.
 func Recover(notexit bool) {
 	if r := recover(); r != nil {
