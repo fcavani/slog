@@ -451,6 +451,10 @@ func TestFreeFuncFatal(t *testing.T) {
 
 	Fatal(msg)
 	AssertLine(t, buf, "teste - fatal - benchmark log test")
+	Fatalf("%v", msg)
+	AssertLine(t, buf, "teste - fatal - benchmark log test")
+	Fatalln(msg)
+	AssertLine(t, buf, "teste - fatal - benchmark log test")
 }
 
 func BenchmarkPureGolog(b *testing.B) {
