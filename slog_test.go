@@ -6,9 +6,11 @@ package slog_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	golog "log"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -133,6 +135,38 @@ func AssertEOF(t *testing.T, buf *writerCloser) {
 	}
 }
 
+type jsonEntry struct {
+	Domain    string
+	Priority  string
+	Timestamp string
+	Tags      []string
+	Message   string
+	File      string
+}
+
+func AssertJson(t *testing.T, buf *writerCloser, v *jsonEntry) {
+	val := &jsonEntry{}
+
+	l, err := buf.ReadString('\n')
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf.Reset()
+
+	err = json.Unmarshal([]byte(l), val)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v.Timestamp = ""
+	val.Timestamp = ""
+	if !reflect.DeepEqual(val, v) {
+		t.Logf("%#v\n", val)
+		t.Logf("%#v\n", v)
+		t.Fatal("json don't match")
+	}
+}
+
 func TestPrint(t *testing.T) {
 	buf := &writerCloser{bytes.NewBuffer([]byte{})}
 
@@ -148,13 +182,13 @@ func TestPrint(t *testing.T) {
 	logger = logger.Di()
 
 	logger.Tag("tag1", "tag2").Println(msg)
-	AssertLine(t, buf, "teste - info - tag1 tag2 - slog/slog_test.go:150 - benchmark log test")
+	AssertLine(t, buf, "teste - info - tag1 tag2 - slog/slog_test.go:184 - benchmark log test")
 
 	logger.Tag("tag1", "tag2").ErrorLevel().Di().Println(msg)
-	AssertLine(t, buf, "teste - error - tag1 tag2 - slog/slog_test.go:153 - benchmark log test")
+	AssertLine(t, buf, "teste - error - tag1 tag2 - slog/slog_test.go:187 - benchmark log test")
 
 	logger.Tag("tag1", "tag2").ErrorLevel().Println(msg)
-	AssertLine(t, buf, "teste - error - tag1 tag2 - slog/slog_test.go:156 - benchmark log test")
+	AssertLine(t, buf, "teste - error - tag1 tag2 - slog/slog_test.go:190 - benchmark log test")
 
 	logger.Tag("tag1", "tag2").ErrorLevel().NoDi().Println(msg)
 	AssertLine(t, buf, "teste - error - tag1 tag2 - benchmark log test")
@@ -162,13 +196,15 @@ func TestPrint(t *testing.T) {
 	logger = logger.DebugLevel()
 
 	logger.Tag("tag1", "tag2").Println(msg)
-	AssertLine(t, buf, "teste - debug - tag1 tag2 - slog/slog_test.go:164 - benchmark log test")
+	AssertLine(t, buf, "teste - debug - tag1 tag2 - slog/slog_test.go:198 - benchmark log test")
 
 }
 
 func TestPrintJSON(t *testing.T) {
+	buf := &writerCloser{bytes.NewBuffer([]byte{})}
+
 	logger := &Slog{
-		Writter:   os.Stdout,
+		Writter:   buf,
 		Formatter: JSON,
 		Level:     DebugPrio,
 	}
@@ -177,6 +213,14 @@ func TestPrintJSON(t *testing.T) {
 		t.Fatal(e.Trace(e.Forward(err)))
 	}
 	logger.Tag("tag1", "tag2").ErrorLevel().Di().Println(msg)
+	AssertJson(t, buf, &jsonEntry{
+		Domain:    "teste",
+		Priority:  "error",
+		Timestamp: "",
+		Tags:      []string{"tag1", "tag2"},
+		Message:   "benchmark log test",
+		File:      "slog/slog_test.go:215",
+	})
 }
 
 func TestPrintLevel(t *testing.T) {
@@ -244,12 +288,12 @@ func TestFreeFunc(t *testing.T) {
 	AssertLine(t, buf, "teste - error - benchmark log test")
 
 	Di().Print(msg)
-	AssertLine(t, buf, "teste - info - slog/slog_test.go:246 - benchmark log test")
+	AssertLine(t, buf, "teste - info - slog/slog_test.go:290 - benchmark log test")
 	DebugInfo()
 	NoDi().Print(msg)
 	AssertLine(t, buf, "teste - info - benchmark log test")
 	Print(msg)
-	AssertLine(t, buf, "teste - info - slog/slog_test.go:251 - benchmark log test")
+	AssertLine(t, buf, "teste - info - slog/slog_test.go:295 - benchmark log test")
 }
 
 func TestFreeFuncPanic(t *testing.T) {
@@ -345,7 +389,7 @@ func TestFreeFuncGoPanic(t *testing.T) {
 	AssertLine(t, buf, "teste - panic - 42")
 	DebugInfo()
 	GoPanic("panic test", []byte{}, true)
-	AssertLine(t, buf, "teste - panic - slog/slog_test.go:347 - panic test")
+	AssertLine(t, buf, "teste - panic - slog/slog_test.go:391 - panic test")
 }
 
 func TestCloseWriter(t *testing.T) {
@@ -393,6 +437,22 @@ func TestExiter(t *testing.T) {
 
 }
 
+func TestFreeFuncFatal(t *testing.T) {
+	buf := &writerCloser{bytes.NewBuffer([]byte{})}
+
+	err := SetOutput("teste", InfoPrio, buf, nil, 100)
+	if err != nil {
+		t.Fatal(e.Trace(e.Forward(err)))
+	}
+
+	Exiter(func(int) {
+		return
+	})
+
+	Fatal(msg)
+	AssertLine(t, buf, "teste - fatal - benchmark log test")
+}
+
 func BenchmarkPureGolog(b *testing.B) {
 	file, err := os.OpenFile("/dev/null", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
@@ -402,7 +462,6 @@ func BenchmarkPureGolog(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		gologger.Print(msg)
-		b.SetBytes(l)
 	}
 }
 
@@ -415,11 +474,12 @@ func BenchmarkLogrus(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		logrus.Info(msg)
-		b.SetBytes(l)
 	}
 }
 
-func BenchmarkSlogNullFile(b *testing.B) {
+const numlogs = 1
+
+func BenchmarkSlogNullFileDi(b *testing.B) {
 	file, err := os.OpenFile("/dev/null", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		b.Error(e.Trace(e.Forward(err)))
@@ -428,18 +488,17 @@ func BenchmarkSlogNullFile(b *testing.B) {
 		Writter: file,
 		Level:   DebugPrio,
 	}
-	err = logger.Init("teste", 1)
+	err = logger.Init("teste", numlogs)
 	if err != nil {
 		b.Error(e.Trace(e.Forward(err)))
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		logger.Tag("tag1", "tag2").ErrorLevel().Di().Print(msg)
-		b.SetBytes(l)
 	}
 }
 
-func BenchmarkSlogJSONNullFile(b *testing.B) {
+func BenchmarkSlogJSONNullFileDi(b *testing.B) {
 	file, err := os.OpenFile("/dev/null", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
 	if err != nil {
 		b.Error(e.Trace(e.Forward(err)))
@@ -449,13 +508,51 @@ func BenchmarkSlogJSONNullFile(b *testing.B) {
 		Formatter: JSON,
 		Level:     DebugPrio,
 	}
-	err = logger.Init("teste", 1)
+	err = logger.Init("teste", numlogs)
 	if err != nil {
 		b.Error(e.Trace(e.Forward(err)))
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		logger.Tag("tag1", "tag2").ErrorLevel().Di().Print(msg)
-		b.SetBytes(l)
+	}
+}
+
+func BenchmarkSlogNullFileNoDi(b *testing.B) {
+	file, err := os.OpenFile("/dev/null", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
+	if err != nil {
+		b.Error(e.Trace(e.Forward(err)))
+	}
+	logger := &Slog{
+		Writter: file,
+		Level:   DebugPrio,
+	}
+	err = logger.Init("teste", numlogs)
+	if err != nil {
+		b.Error(e.Trace(e.Forward(err)))
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		logger.Tag("tag1", "tag2").ErrorLevel().Print(msg)
+	}
+}
+
+func BenchmarkSlogJSONNullFileNoDi(b *testing.B) {
+	file, err := os.OpenFile("/dev/null", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
+	if err != nil {
+		b.Error(e.Trace(e.Forward(err)))
+	}
+	logger := &Slog{
+		Writter:   file,
+		Formatter: JSON,
+		Level:     DebugPrio,
+	}
+	err = logger.Init("teste", numlogs)
+	if err != nil {
+		b.Error(e.Trace(e.Forward(err)))
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		logger.Tag("tag1", "tag2").ErrorLevel().Print(msg)
 	}
 }

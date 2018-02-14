@@ -4,7 +4,10 @@
 
 package slog
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 func formatJSONTime(buf *[]byte, t time.Time) {
 	year, month, day := t.Date()
@@ -35,6 +38,10 @@ var closeing = []byte("\"}\n")
 
 // JSON convert a log entry to json.
 func JSON(l *Slog) ([]byte, error) {
+	m := strings.Replace(l.Log.Message, "\n", " ", -1)
+	if len(m) > 0 && m[len(m)-1] == ' ' {
+		m = m[:len(m)-1]
+	}
 	buf := Pool.Get().([]byte)
 	buf = append(buf, domain...)
 	buf = append(buf, l.Log.Domain...)
@@ -46,7 +53,7 @@ func JSON(l *Slog) ([]byte, error) {
 	buf = append(buf, tgs...)
 	l.Log.Tags.EncodeJSON(&buf)
 	buf = append(buf, msg...)
-	buf = append(buf, []byte(l.Log.Message)...)
+	buf = append(buf, []byte(m)...)
 	buf = append(buf, file...)
 	if l.Log.File != "" {
 		buf = append(buf, []byte(l.Log.File)...)

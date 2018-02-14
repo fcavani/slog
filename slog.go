@@ -139,6 +139,17 @@ type Log struct {
 	zoneBuf   []byte
 }
 
+func (l *Log) String() string {
+	return fmt.Sprintf("Domain: %v\nPriority: %v\nTimestamp: %v\nTags: %v\nMessage: %v\nFile: %v",
+		string(l.Domain),
+		l.Priority.String(),
+		l.Timestamp.Format(time.RFC3339Nano),
+		l.Tags.String(),
+		string(l.msg()),
+		l.File,
+	)
+}
+
 func (l *Log) copy() *Log {
 	d := make([]byte, len(l.Domain))
 	copy(d, l.Domain)
@@ -150,6 +161,10 @@ func (l *Log) copy() *Log {
 		Message:   l.Message,
 		DiFn:      l.DiFn,
 		File:      l.File,
+		zoneHour:  l.zoneHour,
+		zoneMin:   l.zoneMin,
+		zoneSig:   l.zoneSig,
+		zoneBuf:   l.zoneBuf,
 	}
 }
 
@@ -186,7 +201,7 @@ func timeZone() (h, m int, sig bool) {
 // SetTimeZone sets the zone info from time.Now()
 func (l *Log) SetTimeZone() {
 	l.zoneHour, l.zoneMin, l.zoneSig = timeZone()
-	l.zoneBuf = make([]byte, 6)
+	l.zoneBuf = make([]byte, 0, 6)
 	if l.zoneSig {
 		// TODO: check if UTC is + or -. Check if East UTC is really + before the offset.
 		l.zoneBuf = append(l.zoneBuf, '+')
@@ -200,6 +215,9 @@ func (l *Log) SetTimeZone() {
 
 func (l *Log) msg() []byte {
 	msg := l.Message
+	if len(msg) == 0 {
+		return []byte{}
+	}
 	if msg[len(msg)-1] != '\n' {
 		msg += "\n"
 	}
@@ -210,7 +228,6 @@ func (l *Log) di(deep int) {
 	if l.File != "" {
 		return
 	}
-	//l.File = ""
 	if l.DiFn != nil {
 		l.File = l.DiFn(deep)
 	}
@@ -226,14 +243,14 @@ type Slog struct {
 	Exiter    func(int)
 	logPool   *sync.Pool
 	once      sync.Once
-	Lck       sync.Mutex
-	cp        bool
+	Lck       *sync.Mutex
+	Cp        bool
 }
 
 // Itoa converts a int to a byte. i is the interger to be converted, buf is a pointer
 // to the buffer that will receive the converted interge and wid is the number of
 // digits, if the digits is less than wid it will be filled with zeros.
-// This functoin come from std.
+// This function come from std.
 func Itoa(buf *[]byte, i int, wid int) {
 	// Assemble decimal in reverse order.
 	var b [20]byte
@@ -276,6 +293,8 @@ var Pool *sync.Pool
 // BufferSize is the initial allocated size of the buffers.
 var BufferSize = 512
 
+var numLogs int
+
 func init() {
 	Pool = &sync.Pool{
 		New: func() interface{} {
@@ -286,7 +305,8 @@ func init() {
 
 // Init initializes the logger with domain and numLogs. numLogs is the number of
 // Slog structs in the pool.
-func (l *Slog) Init(domain string, numLogs int) error {
+func (l *Slog) Init(domain string, nl int) error {
+	numLogs = nl
 	if l.Log == nil {
 		l.Log = &Log{
 			Priority: InfoPrio,
@@ -308,54 +328,59 @@ func (l *Slog) Init(domain string, numLogs int) error {
 		l.Log.Domain = []byte("Slog")
 	}
 
+	if l.Lck == nil {
+		l.Lck = new(sync.Mutex)
+	}
+
 	l.Log.SetTimeZone()
 
 	if l.Formatter == nil {
-		l.Formatter = func(l *Slog) ([]byte, error) {
+		l.Formatter = func(sl *Slog) ([]byte, error) {
 			buf := Pool.Get().([]byte)
-			buf = append(buf, l.Log.Domain...)
+			buf = append(buf, sl.Log.Domain...)
 			buf = append(buf, sep...)
-			FormatTime(&buf, l.Log.Timestamp)
+			FormatTime(&buf, sl.Log.Timestamp)
 			buf = append(buf, sep...)
-			buf = append(buf, l.Log.Priority.Byte()...)
+			buf = append(buf, sl.Log.Priority.Byte()...)
 			buf = append(buf, sep...)
-			if len(*l.Log.Tags) > 0 {
-				buf = append(buf, []byte(l.Log.Tags.String())...)
+			if len(*sl.Log.Tags) > 0 {
+				buf = append(buf, []byte(sl.Log.Tags.String())...)
 				buf = append(buf, sepTags...)
 			}
-			if l.Log.File != "" {
-				buf = append(buf, []byte(l.Log.File)...)
+			if sl.Log.File != "" {
+				buf = append(buf, []byte(sl.Log.File)...)
 				buf = append(buf, sep...)
 			}
-			buf = append(buf, l.Log.msg()...)
+			buf = append(buf, sl.Log.msg()...)
 			return buf, nil
 		}
 	}
 	if l.Commit == nil {
-		l.Commit = func(l *Slog) {
+		l.Commit = func(sl *Slog) {
 			defer func() {
-				l.Log.Priority = InfoPrio
-				l.Log.File = ""
-				l.Log.DiFn = nil
-				l.cp = false
-				l.logPool.Put(l)
+				sl.Log.Priority = InfoPrio
+				sl.Log.File = ""
+				sl.Log.DiFn = nil
+				sl.Log.Tags = newTags(numTags)
+				sl.Cp = false
+				sl.logPool.Put(sl)
 			}()
 			// If level is less than Priority discart the log entry
-			if l.Log.Priority >= l.Level {
-				l.Log.Timestamp = time.Now()
-				buf, err := l.Formatter(l)
+			if sl.Log.Priority >= sl.Level {
+				sl.Log.Timestamp = time.Now()
+				buf, err := sl.Formatter(sl)
 				if err != nil {
 					//TODO: Give to the user a nice error message.
 					println("SLOG writer failed:", err)
 					return
 				}
-				l.Lck.Lock()
-				_, err = l.Writter.Write(buf)
+				sl.Lck.Lock()
+				_, err = sl.Writter.Write(buf)
 				if err != nil {
 					println("SLOG writer failed:", err)
 				}
 				Pool.Put(buf[:0])
-				l.Lck.Unlock()
+				sl.Lck.Unlock()
 			}
 		}
 	}
@@ -368,40 +393,42 @@ func (l *Slog) Init(domain string, numLogs int) error {
 	l.once.Do(func() {
 		l.logPool = new(sync.Pool)
 		l.logPool.New = func() interface{} {
-			log := &Log{
+			newLog := &Log{
 				Domain:   l.Log.Domain,
 				Priority: InfoPrio,
 				Tags:     newTags(numTags),
 				File:     "",
 				DiFn:     nil,
 			}
-			log.SetTimeZone()
+			newLog.SetTimeZone()
 			return &Slog{
 				Level:     l.Level,
 				Formatter: l.Formatter,
 				Commit:    l.Commit,
 				Writter:   l.Writter,
 				Exiter:    l.Exiter,
-				Log:       log,
+				Log:       newLog,
+				Lck:       l.Lck,
 				logPool:   l.logPool,
 			}
-		}
+		} //New
 		for i := 0; i < numLogs; i++ {
-			log := &Log{
+			newLog := &Log{
 				Domain:   l.Log.Domain,
 				Priority: InfoPrio,
 				Tags:     newTags(numTags),
 				File:     "",
 				DiFn:     nil,
 			}
-			log.SetTimeZone()
+			newLog.SetTimeZone()
 			l.logPool.Put(&Slog{
 				Level:     l.Level,
 				Formatter: l.Formatter,
 				Commit:    l.Commit,
 				Writter:   l.Writter,
 				Exiter:    l.Exiter,
-				Log:       log,
+				Log:       newLog,
+				Lck:       l.Lck,
 				logPool:   l.logPool,
 			})
 		}
@@ -410,12 +437,14 @@ func (l *Slog) Init(domain string, numLogs int) error {
 }
 
 func (l *Slog) copy() *Slog {
-	if l.cp {
-		return l
-	}
+	// if l.Cp {
+	// 	return l
+	// }
 	out := l.logPool.Get().(*Slog)
+	out.Level = l.Level
 	out.Log = l.Log.copy()
-	out.cp = true
+	out.Exiter = l.Exiter
+	out.Cp = true
 	return out
 }
 
@@ -426,6 +455,7 @@ func (l *Slog) dup() *Slog {
 	out.Formatter = l.Formatter
 	out.Commit = l.Commit
 	out.Log = l.Log.copy()
+	out.Exiter = l.Exiter
 	return out
 }
 
@@ -436,35 +466,35 @@ func (l *Slog) dup() *Slog {
 
 // ProtoLevel set the log level to protocol
 func (l *Slog) ProtoLevel() *Slog {
-	l = l.dup()
+	l = l.copy()
 	l.Log.Priority = ProtoPrio
 	return l
 }
 
 // DebugLevel set the log level to debug
 func (l *Slog) DebugLevel() *Slog {
-	l = l.dup()
+	l = l.copy()
 	l.Log.Priority = DebugPrio
 	return l
 }
 
 // InfoLevel set the log level to info
 func (l *Slog) InfoLevel() *Slog {
-	l = l.dup()
+	l = l.copy()
 	l.Log.Priority = InfoPrio
 	return l
 }
 
 // ErrorLevel set the log level to error
 func (l *Slog) ErrorLevel() *Slog {
-	l = l.dup()
+	l = l.copy()
 	l.Log.Priority = ErrorPrio
 	return l
 }
 
 // Tag add tags to the log entry.
 func (l *Slog) Tag(tags ...string) *Slog {
-	l = l.dup()
+	l = l.copy()
 	l.Log.Tags.Clean()
 	l.Log.Tags.Add(tags...)
 	return l
@@ -472,7 +502,7 @@ func (l *Slog) Tag(tags ...string) *Slog {
 
 // Di add debug information to the log entry.
 func (l *Slog) Di() *Slog {
-	l = l.dup()
+	l = l.copy()
 	l.Log.DiFn = debugInfo
 	return l
 }
@@ -485,7 +515,7 @@ func (l *Slog) di(deep int) *Slog {
 
 // NoDi disable debug info.
 func (l *Slog) NoDi() *Slog {
-	l = l.dup()
+	l = l.copy()
 	l.Log.DiFn = nil
 	l.Log.File = ""
 	return l
@@ -650,7 +680,7 @@ func init() {
 }
 
 // SetOutput sets the commit out put to w.
-func SetOutput(domain string, level Level, w io.WriteCloser, formatter func(l *Slog) ([]byte, error), numlogs int) error {
+func SetOutput(domain string, level Level, w io.WriteCloser, formatter func(l *Slog) ([]byte, error), nl int) error {
 	// level, err := ParseLevel(lstr)
 	// if err != nil {
 	// 	return e.Forward(err)
@@ -660,7 +690,16 @@ func SetOutput(domain string, level Level, w io.WriteCloser, formatter func(l *S
 		Writter:   w,
 		Level:     level,
 	}
-	err := log.Init(domain, numlogs)
+	err := log.Init(domain, nl)
+	if err != nil {
+		return e.Forward(err)
+	}
+	return nil
+}
+
+func Exiter(fn func(int)) error {
+	log.Exiter = fn
+	err := log.Init(string(log.Log.Domain), numLogs)
 	if err != nil {
 		return e.Forward(err)
 	}

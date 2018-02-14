@@ -12,6 +12,9 @@ func newTags(legth int) *tags {
 }
 
 func (t *tags) copy() *tags {
+	if t == nil {
+		return nil
+	}
 	dst := make([]string, len(*t))
 	copy(dst, *t)
 	tdst := tags(dst)
@@ -19,6 +22,9 @@ func (t *tags) copy() *tags {
 }
 
 func (t tags) String() (str string) {
+	if t == nil {
+		return ""
+	}
 	for i := 0; i < len(t); i++ {
 		str += t[i] + " "
 	}
@@ -26,16 +32,26 @@ func (t tags) String() (str string) {
 }
 
 func (t *tags) Add(tags ...string) {
+	if t == nil {
+		return
+	}
 	*t = append(*t, tags...)
 }
 
 func (t *tags) Clean() {
+	if t == nil {
+		return
+	}
 	a := *t
 	a = a[:0]
 	*t = a
 }
 
 func (t tags) EncodeJSON(buf *[]byte) {
+	if t == nil {
+		*buf = append(*buf, []byte("[]")...)
+		return
+	}
 	*buf = append(*buf, []byte("[")...)
 	l := len(t) - 1
 	for i := 0; i < len(t); i++ {
