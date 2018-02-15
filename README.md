@@ -14,20 +14,21 @@ to the console. If you want to log to a file change the writer.
 You can see bellow a simple comparison of some loggers.
 First is the baseline logger, the go logger, with is simple but fast.
 The others loggers with more functionalities have a slower performance,
-as expected, but slog have a good set of features with a performance better
-than Logrus.
+as expected, but slog without debug information (Di) have a good set of features
+with a performance better than Logrus.
 
-| Benchmark name | N | Time | Rate |
-|--------------------|-------|----------|-----------|
-|BenchmarkPureGolog-4|1000000|1758 ns/op|10.24 MB/s|
-|BenchmarkLogrus-4|3000000|5658 ns/op|3.18 MB/s|
-|BenchmarkSlogNullFile-4|1000000|2297 ns/op|7.83 MB/s|
-|BenchmarkSlogJSONNullFile-4|1000000|2494 ns/op|7.21 MB/s|
+| Benchmark name | N | Time |
+|--------------------|-------|----------|
+|BenchmarkPureGolog-4|300000|3980 ns/op|
+|BenchmarkLogrus-4|200000|7912 ns/op|
+|BenchmarkSlogNullFile-4|200000|9052 ns/op|
+|BenchmarkSlogJSONNullFile-4|200000|8926 ns/op|
+|BenchmarkSlogNullFileNoDi-4|200000|5662 ns/op|
+|BenchmarkSlogJSONNullFileNoDi-4|200000|5716 ns/op|
 
-But slog can't be used like a high-performance logger.
 Some optimizations will be needed before slog can be used like a
 high-performance logger. I need to get deeper into go and learn
-to do some optimizations to achieve a good performance.
+to do some optimizations to achieve it, mainly for the debug information.
 
 ## Bottlenecks
 
@@ -37,8 +38,11 @@ Slog have 2 main bottlenecks:
 - Log message assemble: the log message is assembled in a byte slice and uses the append
 function that make things slow. Message formatting is a problem too, mainly the
 date and time formatting.
+- Debug information (line number and file name) is a trouble. I need to come with
+a solution that make it more adequate for production. Debug information in
+a test environment is ok.
 
-For the io bottleneck there´s no safe solution besides buy a fast hardware. The
+For the io bottleneck there's no safe solution besides buy a fast hardware. The
 in memory approach may be good for some tasks but its not safe if something
 wrong happen.
 
