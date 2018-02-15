@@ -139,6 +139,7 @@ type Log struct {
 	zoneBuf   []byte
 }
 
+// String print the Log struct contents.
 func (l *Log) String() string {
 	return fmt.Sprintf("Domain: %v\nPriority: %v\nTimestamp: %v\nTags: %v\nMessage: %v\nFile: %v",
 		string(l.Domain),
@@ -437,9 +438,9 @@ func (l *Slog) Init(domain string, nl int) error {
 }
 
 func (l *Slog) copy() *Slog {
-	// if l.Cp {
-	// 	return l
-	// }
+	if l.Cp {
+		return l
+	}
 	out := l.logPool.Get().(*Slog)
 	out.Level = l.Level
 	out.Log = l.Log.copy()
@@ -456,6 +457,14 @@ func (l *Slog) dup() *Slog {
 	out.Commit = l.Commit
 	out.Log = l.Log.copy()
 	out.Exiter = l.Exiter
+	return out
+}
+
+// MakeDefault turn the behavior of actual chain of functions into default to be
+// used in the next chain.
+func (l *Slog) MakeDefault() *Slog {
+	out := l.dup()
+	out.Cp = false
 	return out
 }
 
@@ -546,6 +555,7 @@ func (l *Slog) Println(v ...interface{}) {
 	l.Commit(l)
 }
 
+// Error logs an error.
 func (l *Slog) Error(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(3)
@@ -554,6 +564,7 @@ func (l *Slog) Error(v ...interface{}) {
 	l.Commit(l)
 }
 
+// Errorf logs an error with format.
 func (l *Slog) Errorf(s string, v ...interface{}) {
 	l = l.copy()
 	l.Log.di(3)
@@ -562,6 +573,7 @@ func (l *Slog) Errorf(s string, v ...interface{}) {
 	l.Commit(l)
 }
 
+// Errorln logs an error.
 func (l *Slog) Errorln(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(3)
@@ -697,6 +709,7 @@ func SetOutput(domain string, level Level, w io.WriteCloser, formatter func(l *S
 	return nil
 }
 
+// Exiter configures a function that will be called to exit the app.
 func Exiter(fn func(int)) error {
 	log.Exiter = fn
 	err := log.Init(string(log.Log.Domain), numLogs)
@@ -712,7 +725,7 @@ func Exiter(fn func(int)) error {
 
 // DebugInfo enable debug information for all messages.
 func DebugInfo() {
-	log = log.Di()
+	log = log.Di().MakeDefault()
 }
 
 // Di add debug information to the log message.
@@ -746,14 +759,17 @@ func Println(vals ...interface{}) {
 	log.di(4).Println(vals...)
 }
 
+// Error logs an error.
 func Error(vals ...interface{}) {
 	log.di(4).Error(vals...)
 }
 
+// Error logs an error formated.
 func Errorf(str string, vals ...interface{}) {
 	log.di(4).Errorf(str, vals...)
 }
 
+// Error logs an error.
 func Errorln(vals ...interface{}) {
 	log.di(4).Errorln(vals...)
 }
@@ -808,6 +824,7 @@ func ErrorLevel() *Slog {
 	return log.di(4).ErrorLevel()
 }
 
+// GoPanic logs a panic.
 func GoPanic(r interface{}, stack []byte, cont bool) {
 	log.di(4).GoPanic(r, stack, cont)
 }

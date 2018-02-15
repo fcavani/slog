@@ -179,7 +179,7 @@ func TestPrint(t *testing.T) {
 		t.Fatal(e.Trace(e.Forward(err)))
 	}
 
-	logger = logger.Di()
+	logger = logger.Di().MakeDefault()
 
 	logger.Tag("tag1", "tag2").Println(msg)
 	AssertLine(t, buf, "teste - info - tag1 tag2 - slog/slog_test.go:184 - benchmark log test")
@@ -193,7 +193,7 @@ func TestPrint(t *testing.T) {
 	logger.Tag("tag1", "tag2").ErrorLevel().NoDi().Println(msg)
 	AssertLine(t, buf, "teste - error - tag1 tag2 - benchmark log test")
 
-	logger = logger.DebugLevel()
+	logger = logger.DebugLevel().MakeDefault()
 
 	logger.Tag("tag1", "tag2").Println(msg)
 	AssertLine(t, buf, "teste - debug - tag1 tag2 - slog/slog_test.go:198 - benchmark log test")
