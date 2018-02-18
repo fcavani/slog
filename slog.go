@@ -131,23 +131,24 @@ type Log struct {
 	Timestamp time.Time
 	Tags      *tags
 	Message   string
-	DiFn      func(int) string
-	File      string
+	DiLevel   int
+	DoDi      bool
 	zoneHour  int
 	zoneMin   int
 	zoneSig   bool
 	zoneBuf   []byte
+	file      string
 }
 
 // String print the Log struct contents.
 func (l *Log) String() string {
-	return fmt.Sprintf("Domain: %v\nPriority: %v\nTimestamp: %v\nTags: %v\nMessage: %v\nFile: %v",
+	return fmt.Sprintf("Domain: %v\nPriority: %v\nTimestamp: %v\nTags: %v\nMessage: %v\n",
 		string(l.Domain),
 		l.Priority.String(),
 		l.Timestamp.Format(time.RFC3339Nano),
 		l.Tags.String(),
 		string(l.msg()),
-		l.File,
+		//l.File,
 	)
 }
 
@@ -160,8 +161,8 @@ func (l *Log) copy() *Log {
 		Timestamp: l.Timestamp,
 		Tags:      l.Tags.copy(),
 		Message:   l.Message,
-		DiFn:      l.DiFn,
-		File:      l.File,
+		DiLevel:   l.DiLevel,
+		DoDi:      l.DoDi,
 		zoneHour:  l.zoneHour,
 		zoneMin:   l.zoneMin,
 		zoneSig:   l.zoneSig,
@@ -226,12 +227,10 @@ func (l *Log) msg() []byte {
 }
 
 func (l *Log) di(deep int) {
-	if l.File != "" {
+	if l.DiLevel > 0 {
 		return
 	}
-	if l.DiFn != nil {
-		l.File = l.DiFn(deep)
-	}
+	l.DiLevel = deep
 }
 
 // Slog is the logger.
@@ -348,8 +347,8 @@ func (l *Slog) Init(domain string, nl int) error {
 				buf = append(buf, []byte(sl.Log.Tags.String())...)
 				buf = append(buf, sepTags...)
 			}
-			if sl.Log.File != "" {
-				buf = append(buf, []byte(sl.Log.File)...)
+			if sl.Log.DoDi {
+				buf = append(buf, []byte(sl.Log.file)...)
 				buf = append(buf, sep...)
 			}
 			buf = append(buf, sl.Log.msg()...)
@@ -360,8 +359,8 @@ func (l *Slog) Init(domain string, nl int) error {
 		l.Commit = func(sl *Slog) {
 			defer func() {
 				sl.Log.Priority = InfoPrio
-				sl.Log.File = ""
-				sl.Log.DiFn = nil
+				sl.Log.DoDi = false
+				sl.Log.DiLevel = 0
 				sl.Log.Tags = newTags(numTags)
 				sl.Cp = false
 				sl.logPool.Put(sl)
@@ -369,6 +368,7 @@ func (l *Slog) Init(domain string, nl int) error {
 			// If level is less than Priority discart the log entry
 			if sl.Log.Priority >= sl.Level {
 				sl.Log.Timestamp = time.Now()
+				sl.Log.file = debugInfo(sl.Log.DiLevel)
 				buf, err := sl.Formatter(sl)
 				if err != nil {
 					//TODO: Give to the user a nice error message.
@@ -398,8 +398,8 @@ func (l *Slog) Init(domain string, nl int) error {
 				Domain:   l.Log.Domain,
 				Priority: InfoPrio,
 				Tags:     newTags(numTags),
-				File:     "",
-				DiFn:     nil,
+				DoDi:     false,
+				DiLevel:  0,
 			}
 			newLog.SetTimeZone()
 			return &Slog{
@@ -418,8 +418,8 @@ func (l *Slog) Init(domain string, nl int) error {
 				Domain:   l.Log.Domain,
 				Priority: InfoPrio,
 				Tags:     newTags(numTags),
-				File:     "",
-				DiFn:     nil,
+				DoDi:     false,
+				DiLevel:  0,
 			}
 			newLog.SetTimeZone()
 			l.logPool.Put(&Slog{
@@ -512,7 +512,7 @@ func (l *Slog) Tag(tags ...string) *Slog {
 // Di add debug information to the log entry.
 func (l *Slog) Di() *Slog {
 	l = l.copy()
-	l.Log.DiFn = debugInfo
+	l.Log.DoDi = true
 	return l
 }
 
@@ -525,8 +525,8 @@ func (l *Slog) di(deep int) *Slog {
 // NoDi disable debug info.
 func (l *Slog) NoDi() *Slog {
 	l = l.copy()
-	l.Log.DiFn = nil
-	l.Log.File = ""
+	l.Log.DoDi = false
+	l.Log.DiLevel = 0
 	return l
 }
 
@@ -692,12 +692,13 @@ func init() {
 }
 
 // SetOutput sets the commit out put to w.
-func SetOutput(domain string, level Level, w io.WriteCloser, formatter func(l *Slog) ([]byte, error), nl int) error {
+func SetOutput(domain string, level Level, w io.WriteCloser, commiter func(sl *Slog), formatter func(l *Slog) ([]byte, error), nl int) error {
 	// level, err := ParseLevel(lstr)
 	// if err != nil {
 	// 	return e.Forward(err)
 	// }
 	log = &Slog{
+		Commit:    commiter,
 		Formatter: formatter,
 		Writter:   w,
 		Level:     level,

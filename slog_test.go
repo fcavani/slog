@@ -257,7 +257,7 @@ func TestPrintLevel(t *testing.T) {
 
 func TestFreeFunc(t *testing.T) {
 	buf := &writerCloser{bytes.NewBuffer([]byte{})}
-	err := SetOutput("teste", ProtoPrio, buf, nil, 100)
+	err := SetOutput("teste", ProtoPrio, buf, nil, nil, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +298,7 @@ func TestFreeFunc(t *testing.T) {
 
 func TestFreeFuncPanic(t *testing.T) {
 	buf := &writerCloser{bytes.NewBuffer([]byte{})}
-	err := SetOutput("teste", ProtoPrio, buf, nil, 100)
+	err := SetOutput("teste", ProtoPrio, buf, nil, nil, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -320,7 +320,7 @@ func TestFreeFuncPanic(t *testing.T) {
 
 func TestFreeFuncPanicf(t *testing.T) {
 	buf := &writerCloser{bytes.NewBuffer([]byte{})}
-	err := SetOutput("teste", ProtoPrio, buf, nil, 100)
+	err := SetOutput("teste", ProtoPrio, buf, nil, nil, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +342,7 @@ func TestFreeFuncPanicf(t *testing.T) {
 
 func TestFreeFuncPanicln(t *testing.T) {
 	buf := &writerCloser{bytes.NewBuffer([]byte{})}
-	err := SetOutput("teste", ProtoPrio, buf, nil, 100)
+	err := SetOutput("teste", ProtoPrio, buf, nil, nil, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -364,7 +364,7 @@ func TestFreeFuncPanicln(t *testing.T) {
 
 func TestRecover(t *testing.T) {
 	buf := &writerCloser{bytes.NewBuffer([]byte{})}
-	err := SetOutput("teste", ProtoPrio, buf, nil, 100)
+	err := SetOutput("teste", ProtoPrio, buf, nil, nil, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +377,7 @@ type OddType int
 
 func TestFreeFuncGoPanic(t *testing.T) {
 	buf := &writerCloser{bytes.NewBuffer([]byte{})}
-	err := SetOutput("teste", ProtoPrio, buf, nil, 100)
+	err := SetOutput("teste", ProtoPrio, buf, nil, nil, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -440,7 +440,7 @@ func TestExiter(t *testing.T) {
 func TestFreeFuncFatal(t *testing.T) {
 	buf := &writerCloser{bytes.NewBuffer([]byte{})}
 
-	err := SetOutput("teste", InfoPrio, buf, nil, 100)
+	err := SetOutput("teste", InfoPrio, buf, nil, nil, 100)
 	if err != nil {
 		t.Fatal(e.Trace(e.Forward(err)))
 	}

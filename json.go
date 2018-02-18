@@ -55,8 +55,8 @@ func JSON(l *Slog) ([]byte, error) {
 	buf = append(buf, msg...)
 	buf = append(buf, []byte(m)...)
 	buf = append(buf, file...)
-	if l.Log.File != "" {
-		buf = append(buf, []byte(l.Log.File)...)
+	if l.Log.DoDi {
+		buf = append(buf, []byte(l.Log.file)...)
 	}
 	buf = append(buf, closeing...)
 	return buf, nil
