@@ -13,6 +13,7 @@ import (
 	"github.com/fcavani/slog/systemd"
 )
 
+// Prior2Sd convert the priority from slog to systemd.
 func Prior2Sd(level Level) systemd.Priority {
 	switch level {
 	case ProtoPrio:
@@ -34,6 +35,7 @@ func Prior2Sd(level Level) systemd.Priority {
 	}
 }
 
+// CommitSd send to systemd journal the log entry.
 func CommitSd(sl *Slog) {
 	defer func() {
 		sl.Log.Priority = InfoPrio
@@ -114,12 +116,15 @@ func CommitSd(sl *Slog) {
 	}
 }
 
+// SdFormater format the mensagem for systemd journal
 func SdFormater(sl *Slog) ([]byte, error) {
 	buf := Pool.Get().([]byte)
 	buf = append(buf, sl.Log.msg()...)
 	return buf, nil
 }
 
+// FallbackFormater is called if systemd isn't avalible. Need to set Writter in
+// Slog struct.
 func FallbackFormater(sl *Slog) ([]byte, error) {
 	buf := Pool.Get().([]byte)
 	buf = append(buf, sl.Log.Domain...)
@@ -141,13 +146,6 @@ func FallbackFormater(sl *Slog) ([]byte, error) {
 }
 
 func debuginfo(level int) (fnname, file, line string) {
-	// var ok bool
-	// var l int
-	// _, file, l, ok = runtime.Caller(level)
-	// if ok {
-	//   line = strconv.Itoa(l)
-	// }
-	// return
 	pc := make([]uintptr, 10) // at least 1 entry needed
 	runtime.Callers(level, pc)
 	f := runtime.FuncForPC(pc[0])
@@ -164,10 +162,11 @@ var (
 	Hostname string
 
 	sendToSd func(string, systemd.Priority, map[string]string) error
+
+	testing bool
 )
 
-var testing bool
-
+// Testing enable testing in an eviroment without systemd.
 func Testing(t bool) {
 	testing = t
 	sendToSd = systemd.Send
@@ -183,4 +182,6 @@ func init() {
 	if hn, err := os.Hostname(); err == nil {
 		Hostname = hn
 	}
+	testing = false
+	sendToSd = systemd.Send
 }
