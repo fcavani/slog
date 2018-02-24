@@ -560,3 +560,62 @@ func BenchmarkSlogJSONNullFileNoDi(b *testing.B) {
 		logger.Tag("tag1", "tag2").ErrorLevel().Print(msg)
 	}
 }
+
+func TestSetLevel(t *testing.T) {
+	buf := &writerCloser{bytes.NewBuffer([]byte{})}
+
+	logger := &Slog{
+		Writter: buf,
+		Level:   DebugPrio,
+	}
+	err := logger.Init("teste", 1)
+	if err != nil {
+		t.Fatal(e.Trace(e.Forward(err)))
+	}
+
+	logger = logger.Di().MakeDefault()
+
+	logger.Tag("tag1", "tag2").Println(msg)
+	AssertLine(t, buf, "teste - info - tag1 tag2 - slog/slog_test.go:578 - benchmark log test")
+
+	logger.Tag("tag1", "tag2").ProtoLevel().Println(msg)
+	AssertEOF(t, buf)
+
+	logger.Tag("tag1", "tag2").SetLevel(ProtoPrio).ProtoLevel().Println(msg)
+	AssertLine(t, buf, "teste - protocol - tag1 tag2 - slog/slog_test.go:584 - benchmark log test")
+
+	logger.Tag("tag1", "tag2").ProtoLevel().Println(msg)
+	AssertEOF(t, buf)
+
+	logger.Tag("tag1", "tag2").Println(msg)
+	AssertLine(t, buf, "teste - info - tag1 tag2 - slog/slog_test.go:590 - benchmark log test")
+
+	logger = logger.SetLevel(ProtoPrio).MakeDefault()
+
+	logger.Tag("tag1", "tag2").ProtoLevel().Println(msg)
+	AssertLine(t, buf, "teste - protocol - tag1 tag2 - slog/slog_test.go:595 - benchmark log test")
+}
+
+func TestFreeSetLevel(t *testing.T) {
+	buf := &writerCloser{bytes.NewBuffer([]byte{})}
+
+	err := SetOutput("teste", ProtoPrio, buf, nil, nil, 100)
+	if err != nil {
+		t.Fatal(e.Trace(e.Forward(err)))
+	}
+
+	ProtoLevel().Println(msg)
+	AssertLine(t, buf, "teste - protocol - benchmark log test")
+
+	err = SetLevel(InfoPrio)
+	if err != nil {
+		t.Fatal(e.Trace(e.Forward(err)))
+	}
+
+	ProtoLevel().Println(msg)
+	AssertEOF(t, buf)
+
+	Println(msg)
+	AssertLine(t, buf, "teste - info - benchmark log test")
+
+}

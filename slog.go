@@ -235,16 +235,22 @@ func (l *Log) di(deep int) {
 
 // Slog is the logger.
 type Slog struct {
-	Level     Level
+	// Level is the max log level that will filter the entries.
+	Level Level
+	// Format a readable messagem from the log information
 	Formatter func(l *Slog) ([]byte, error)
-	Commit    func(l *Slog)
-	Writter   io.WriteCloser
-	Log       *Log
-	Exiter    func(int)
-	logPool   *sync.Pool
-	once      sync.Once
-	Lck       *sync.Mutex
-	Cp        bool
+	// Commit sent entry to somewhere.
+	Commit func(l *Slog)
+	// Writter can be a destiny in the Commit function.
+	Writter io.WriteCloser
+	// Log entry.
+	Log *Log
+	// Exiter is the function caled on Fatal and Panic methods.
+	Exiter  func(int)
+	logPool *sync.Pool
+	once    sync.Once
+	Lck     *sync.Mutex
+	Cp      bool
 }
 
 // Itoa converts a int to a byte. i is the interger to be converted, buf is a pointer
@@ -391,6 +397,9 @@ func (l *Slog) Init(domain string, nl int) error {
 	if l.Exiter == nil {
 		l.Exiter = os.Exit
 	}
+	if l.Level == 0 {
+		l.Level = InfoPrio
+	}
 	l.once.Do(func() {
 		l.logPool = new(sync.Pool)
 		l.logPool.New = func() interface{} {
@@ -468,10 +477,12 @@ func (l *Slog) MakeDefault() *Slog {
 	return out
 }
 
-// TODO: make it work
-// func (l *Slog) SetLevel(level Level) {
-// 	l.Level = level
-// }
+// SetLevel set the level to filter log entries.
+func (l *Slog) SetLevel(level Level) *Slog {
+	l = l.copy()
+	l.Level = level
+	return l
+}
 
 // ProtoLevel set the log level to protocol
 func (l *Slog) ProtoLevel() *Slog {
@@ -720,9 +731,15 @@ func Exiter(fn func(int)) error {
 	return nil
 }
 
-// func SetLevel(level Level) {
-// 	log.SetLevel(level)
-// }
+// SetLevel set the level to filter log entries.
+func SetLevel(level Level) error {
+	log.Level = level
+	err := log.Init(string(log.Log.Domain), numLogs)
+	if err != nil {
+		return e.Forward(err)
+	}
+	return nil
+}
 
 // DebugInfo enable debug information for all messages.
 func DebugInfo() {
