@@ -374,7 +374,9 @@ func (l *Slog) Init(domain string, nl int) error {
 			// If level is less than Priority discart the log entry
 			if sl.Log.Priority >= sl.Level {
 				sl.Log.Timestamp = time.Now()
-				sl.Log.file = debugInfo(sl.Log.DiLevel)
+				if sl.Log.DoDi {
+					sl.Log.file = debugInfo(sl.Log.DiLevel)
+				}
 				buf, err := sl.Formatter(sl)
 				if err != nil {
 					//TODO: Give to the user a nice error message.
