@@ -32,7 +32,7 @@ to do some optimizations to achieve it, mainly for the debug information.
 
 ## Bottlenecks
 
-Slog have 2 main bottlenecks:
+Slog have 3 main bottlenecks:
 
 - Io bottleneck: this occurs when committer send the data to disk or to some db.
 - Log message assemble: the log message is assembled in a byte slice and uses the append
