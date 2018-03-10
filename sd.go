@@ -58,7 +58,7 @@ func CommitSd(sl *Slog) {
 				return
 			}
 
-			vars := make(map[string]string, 10)
+			vars := make(map[string]string, 11)
 
 			vars["_TRANSPORT"] = "journal"
 			vars["DOMAIN"] = string(sl.Log.Domain)
