@@ -619,3 +619,28 @@ func TestFreeSetLevel(t *testing.T) {
 	AssertLine(t, buf, "teste - info - benchmark log test")
 
 }
+
+func TestFilter(t *testing.T) {
+	buf := &writerCloser{bytes.NewBuffer([]byte{})}
+
+	logger := &Slog{
+		Writter: buf,
+		Level:   DebugPrio,
+		Filter: func(sl *Slog) bool {
+			return !sl.Log.Tags.Have("nolog")
+		},
+	}
+	err := logger.Init("teste", 1)
+	if err != nil {
+		t.Fatal(e.Trace(e.Forward(err)))
+	}
+
+	logger.Tag("tag1").Println(msg)
+	AssertLine(t, buf, "teste - info - tag1 - benchmark log test")
+
+	logger.Tag("nolog").Println(msg)
+	AssertEOF(t, buf)
+
+	logger.Tag("tag1").Println(msg)
+	AssertLine(t, buf, "teste - info - tag1 - benchmark log test")
+}

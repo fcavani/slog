@@ -37,85 +37,73 @@ func Prior2Sd(level Level) systemd.Priority {
 
 // CommitSd send to systemd journal the log entry.
 func CommitSd(sl *Slog) {
-	defer func() {
-		sl.Log.Priority = InfoPrio
-		sl.Log.DoDi = false
-		sl.Log.DiLevel = 0
-		sl.Log.Tags = newTags(numTags)
-		sl.Cp = false
-		sl.logPool.Put(sl)
-	}()
+	sl.Log.Timestamp = time.Now()
 
-	// If level is less than Priority discart the log entry
-	if sl.Log.Priority >= sl.Level {
-		sl.Log.Timestamp = time.Now()
-
-		if systemd.Enabled() || testing {
-			buf, err := sl.Formatter(sl)
-			if err != nil {
-				//TODO: Give to the user a nice error message.
-				println("SLOG writer failed:", err)
-				return
-			}
-
-			vars := make(map[string]string, 11)
-
-			vars["_TRANSPORT"] = "journal"
-			vars["DOMAIN"] = string(sl.Log.Domain)
-			vars["_PID"] = PID
-			vars["_UID"] = UID
-			vars["_GID"] = GID
-			vars["_HOSTNAME"] = Hostname
-			//vars[""] = ""
-
-			if mid, err := systemd.MachineID(); err == nil {
-				vars["_MACHINE_ID"] = mid
-			}
-
-			// TODO: Salvar o level...
-			if sl.Log.DoDi {
-				if fnname, file, line := debuginfo(sl.Log.DiLevel + 1); file != "" && line != "" {
-					vars["CODE_FILE"] = file
-					vars["CODE_LINE"] = line
-					vars["CODE_FUNC"] = fnname
-				}
-			}
-
-			if len(*sl.Log.Tags) > 0 {
-				vars["TAGS"] = sl.Log.Tags.String()
-			}
-
-			err = sendToSd(string(buf), Prior2Sd(sl.Log.Priority), vars)
-			if err != nil {
-				println("SLOG writer failed:", err)
-				return
-			}
-
-			return
-		}
-
-		// Fallback formatter and commiter.
-		// Send the log to some file normally the os.Stdout.
-		// Set slog Writter property to os.Stdout.
-		if sl.Log.DoDi {
-			sl.Log.file = debugInfo(sl.Log.DiLevel)
-		}
-
-		buf, err := FallbackFormater(sl)
+	if systemd.Enabled() || testing {
+		buf, err := sl.Formatter(sl)
 		if err != nil {
 			//TODO: Give to the user a nice error message.
 			println("SLOG writer failed:", err)
 			return
 		}
 
-		sl.Lck.Lock()
-		_, err = sl.Writter.Write(buf)
+		vars := make(map[string]string, 11)
+
+		vars["_TRANSPORT"] = "journal"
+		vars["DOMAIN"] = string(sl.Log.Domain)
+		vars["_PID"] = PID
+		vars["_UID"] = UID
+		vars["_GID"] = GID
+		vars["_HOSTNAME"] = Hostname
+		//vars[""] = ""
+
+		if mid, err := systemd.MachineID(); err == nil {
+			vars["_MACHINE_ID"] = mid
+		}
+
+		// TODO: Salvar o level...
+		if sl.Log.DoDi {
+			if fnname, file, line := debuginfo(sl.Log.DiLevel + 1); file != "" && line != "" {
+				vars["CODE_FILE"] = file
+				vars["CODE_LINE"] = line
+				vars["CODE_FUNC"] = fnname
+			}
+		}
+
+		if len(*sl.Log.Tags) > 0 {
+			vars["TAGS"] = sl.Log.Tags.String()
+		}
+
+		err = sendToSd(string(buf), Prior2Sd(sl.Log.Priority), vars)
 		if err != nil {
 			println("SLOG writer failed:", err)
+			return
 		}
-		Pool.Put(buf[:0])
-		sl.Lck.Unlock()
+
+		return
 	}
+
+	// Fallback formatter and commiter.
+	// Send the log to some file normally the os.Stdout.
+	// Set slog Writter property to os.Stdout.
+	if sl.Log.DoDi {
+		sl.Log.file = debugInfo(sl.Log.DiLevel)
+	}
+
+	buf, err := FallbackFormater(sl)
+	if err != nil {
+		//TODO: Give to the user a nice error message.
+		println("SLOG writer failed:", err)
+		return
+	}
+
+	sl.Lck.Lock()
+	_, err = sl.Writter.Write(buf)
+	if err != nil {
+		println("SLOG writer failed:", err)
+	}
+	Pool.Put(buf[:0])
+	sl.Lck.Unlock()
 }
 
 // SdFormater format the mensagem for systemd journal

@@ -237,6 +237,8 @@ func (l *Log) di(deep int) {
 type Slog struct {
 	// Level is the max log level that will filter the entries.
 	Level Level
+	// Filter filter the log entry. If return true the log entry pass the filter.
+	Filter func(l *Slog) bool
 	// Format a readable messagem from the log information
 	Formatter func(l *Slog) ([]byte, error)
 	// Commit sent entry to somewhere.
@@ -363,34 +365,23 @@ func (l *Slog) Init(domain string, nl int) error {
 	}
 	if l.Commit == nil {
 		l.Commit = func(sl *Slog) {
-			defer func() {
-				sl.Log.Priority = InfoPrio
-				sl.Log.DoDi = false
-				sl.Log.DiLevel = 0
-				sl.Log.Tags = newTags(numTags)
-				sl.Cp = false
-				sl.logPool.Put(sl)
-			}()
-			// If level is less than Priority discart the log entry
-			if sl.Log.Priority >= sl.Level {
-				sl.Log.Timestamp = time.Now()
-				if sl.Log.DoDi {
-					sl.Log.file = debugInfo(sl.Log.DiLevel)
-				}
-				buf, err := sl.Formatter(sl)
-				if err != nil {
-					//TODO: Give to the user a nice error message.
-					println("SLOG writer failed:", err)
-					return
-				}
-				sl.Lck.Lock()
-				_, err = sl.Writter.Write(buf)
-				if err != nil {
-					println("SLOG writer failed:", err)
-				}
-				Pool.Put(buf[:0])
-				sl.Lck.Unlock()
+			sl.Log.Timestamp = time.Now()
+			if sl.Log.DoDi {
+				sl.Log.file = debugInfo(sl.Log.DiLevel)
 			}
+			buf, err := sl.Formatter(sl)
+			if err != nil {
+				//TODO: Give to the user a nice error message.
+				println("SLOG writer failed:", err)
+				return
+			}
+			sl.Lck.Lock()
+			_, err = sl.Writter.Write(buf)
+			if err != nil {
+				println("SLOG writer failed:", err)
+			}
+			Pool.Put(buf[:0])
+			sl.Lck.Unlock()
 		}
 	}
 	if l.Writter == nil {
@@ -398,6 +389,11 @@ func (l *Slog) Init(domain string, nl int) error {
 	}
 	if l.Exiter == nil {
 		l.Exiter = os.Exit
+	}
+	if l.Filter == nil {
+		l.Filter = func(_ *Slog) bool {
+			return true
+		}
 	}
 	if l.Level == 0 {
 		l.Level = InfoPrio
@@ -419,6 +415,7 @@ func (l *Slog) Init(domain string, nl int) error {
 				Commit:    l.Commit,
 				Writter:   l.Writter,
 				Exiter:    l.Exiter,
+				Filter:    l.Filter,
 				Log:       newLog,
 				Lck:       l.Lck,
 				logPool:   l.logPool,
@@ -439,6 +436,7 @@ func (l *Slog) Init(domain string, nl int) error {
 				Commit:    l.Commit,
 				Writter:   l.Writter,
 				Exiter:    l.Exiter,
+				Filter:    l.Filter,
 				Log:       newLog,
 				Lck:       l.Lck,
 				logPool:   l.logPool,
@@ -543,65 +541,87 @@ func (l *Slog) NoDi() *Slog {
 	return l
 }
 
+func (l *Slog) commit() {
+	defer func() {
+		l.Log.Priority = InfoPrio
+		l.Log.DoDi = false
+		l.Log.DiLevel = 0
+		l.Log.Tags = newTags(numTags)
+		l.Cp = false
+		l.logPool.Put(l)
+	}()
+
+	// If level is less than Priority discart the log entry
+	if l.Log.Priority < l.Level {
+		return
+	}
+
+	if !l.Filter(l) {
+		return
+	}
+
+	l.Commit(l)
+}
+
 // Print prints a log entry to the destinie, this is determined by the commit
 // function.
 func (l *Slog) Print(v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Message = fmt.Sprint(v...)
-	l.Commit(l)
+	l.commit()
 }
 
 // Printf prints a formated log entry to the destine.
 func (l *Slog) Printf(s string, v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Message = fmt.Sprintf(s, v...)
-	l.Commit(l)
+	l.commit()
 }
 
 // Println prints a log entry to the destine.
 func (l *Slog) Println(v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Message = fmt.Sprintln(v...)
-	l.Commit(l)
+	l.commit()
 }
 
 // Error logs an error.
 func (l *Slog) Error(v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Priority = ErrorPrio
 	l.Log.Message = fmt.Sprint(v...)
-	l.Commit(l)
+	l.commit()
 }
 
 // Errorf logs an error with format.
 func (l *Slog) Errorf(s string, v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Priority = ErrorPrio
 	l.Log.Message = fmt.Sprintf(s, v...)
-	l.Commit(l)
+	l.commit()
 }
 
 // Errorln logs an error.
 func (l *Slog) Errorln(v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Priority = ErrorPrio
 	l.Log.Message = fmt.Sprintln(v...)
-	l.Commit(l)
+	l.commit()
 }
 
 // Fatal print a log entry to the destine and exit with 1.
 func (l *Slog) Fatal(v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Message = fmt.Sprint(v...)
 	l.Log.Priority = FatalPrio
-	l.Commit(l)
+	l.commit()
 	l.Writter.Close()
 	l.Exiter(1)
 }
@@ -609,10 +629,10 @@ func (l *Slog) Fatal(v ...interface{}) {
 // Fatalf print a formated log entry to the destine and exit with 1.
 func (l *Slog) Fatalf(s string, v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Message = fmt.Sprintf(s, v...)
 	l.Log.Priority = FatalPrio
-	l.Commit(l)
+	l.commit()
 	l.Writter.Close()
 	l.Exiter(1)
 }
@@ -620,10 +640,10 @@ func (l *Slog) Fatalf(s string, v ...interface{}) {
 // Fatalln print a log entry to the destine and exit with 1.
 func (l *Slog) Fatalln(v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Message = fmt.Sprintln(v...)
 	l.Log.Priority = FatalPrio
-	l.Commit(l)
+	l.commit()
 	l.Writter.Close()
 	l.Exiter(1)
 }
@@ -631,10 +651,10 @@ func (l *Slog) Fatalln(v ...interface{}) {
 // Panic print a log entry to the destine and call panic.
 func (l *Slog) Panic(v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Message = fmt.Sprint(v...)
 	l.Log.Priority = PanicPrio
-	l.Commit(l)
+	l.commit()
 	l.Writter.Close()
 	panic(l.Log.Message)
 }
@@ -642,10 +662,10 @@ func (l *Slog) Panic(v ...interface{}) {
 // Panicf print a formated log entry to the destine and call panic.
 func (l *Slog) Panicf(s string, v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Message = fmt.Sprintf(s, v...)
 	l.Log.Priority = PanicPrio
-	l.Commit(l)
+	l.commit()
 	l.Writter.Close()
 	panic(l.Log.Message)
 }
@@ -653,10 +673,10 @@ func (l *Slog) Panicf(s string, v ...interface{}) {
 // Panicln print a log entry to the destine and call panic.
 func (l *Slog) Panicln(v ...interface{}) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	l.Log.Message = fmt.Sprintln(v...)
 	l.Log.Priority = PanicPrio
-	l.Commit(l)
+	l.commit()
 	l.Writter.Close()
 	panic(l.Log.Message[:len(l.Log.Message)-1])
 }
@@ -664,7 +684,7 @@ func (l *Slog) Panicln(v ...interface{}) {
 // GoPanic is use when recover from a panic and the panic must be logged
 func (l *Slog) GoPanic(r interface{}, stack []byte, cont bool) {
 	l = l.copy()
-	l.Log.di(3)
+	l.Log.di(4)
 	switch v := r.(type) {
 	case string:
 		l.Log.Message = v + "\n"
@@ -675,7 +695,7 @@ func (l *Slog) GoPanic(r interface{}, stack []byte, cont bool) {
 	}
 	l.Log.Message += "\n{" + string(stack) + "}"
 	l.Log.Priority = PanicPrio
-	l.Commit(l)
+	l.commit()
 	if !cont {
 		l.Writter.Close()
 		l.Exiter(1)
@@ -766,87 +786,87 @@ func Tag(tags ...string) *Slog {
 // Print prints a log entry to the destinie, this is determined by the commit
 // function.
 func Print(vals ...interface{}) {
-	log.di(4).Print(vals...)
+	log.di(5).Print(vals...)
 }
 
 // Printf prints a formated log entry to the destine.
 func Printf(str string, vals ...interface{}) {
-	log.di(4).Printf(str, vals...)
+	log.di(5).Printf(str, vals...)
 }
 
 // Println prints a log entry to the destine.
 func Println(vals ...interface{}) {
-	log.di(4).Println(vals...)
+	log.di(5).Println(vals...)
 }
 
 // Error logs an error.
 func Error(vals ...interface{}) {
-	log.di(4).Error(vals...)
+	log.di(5).Error(vals...)
 }
 
 // Error logs an error formated.
 func Errorf(str string, vals ...interface{}) {
-	log.di(4).Errorf(str, vals...)
+	log.di(5).Errorf(str, vals...)
 }
 
 // Error logs an error.
 func Errorln(vals ...interface{}) {
-	log.di(4).Errorln(vals...)
+	log.di(5).Errorln(vals...)
 }
 
 // Fatal print a log entry to the destine and exit with 1.
 func Fatal(vals ...interface{}) {
-	log.di(4).Fatal(vals...)
+	log.di(5).Fatal(vals...)
 }
 
 // Fatalf print a formated log entry to the destine and exit with 1.
 func Fatalf(s string, vals ...interface{}) {
-	log.di(4).Fatalf(s, vals...)
+	log.di(5).Fatalf(s, vals...)
 }
 
 // Fatalln print a log entry to the destine and exit with 1.
 func Fatalln(vals ...interface{}) {
-	log.di(4).Fatalln(vals...)
+	log.di(5).Fatalln(vals...)
 }
 
 // Panic print a log entry to the destine and call panic
 func Panic(vals ...interface{}) {
-	log.di(4).Panic(vals...)
+	log.di(5).Panic(vals...)
 }
 
 // Panicf print a formated log entry to the destine and call panic.
 func Panicf(s string, vals ...interface{}) {
-	log.di(4).Panicf(s, vals...)
+	log.di(5).Panicf(s, vals...)
 }
 
 // Panicln print a log entry to the destine and call panic.
 func Panicln(vals ...interface{}) {
-	log.di(4).Panicln(vals...)
+	log.di(5).Panicln(vals...)
 }
 
 // ProtoLevel set the log level to protocol
 func ProtoLevel() *Slog {
-	return log.di(4).ProtoLevel()
+	return log.di(5).ProtoLevel()
 }
 
 // DebugLevel set the log level to debug
 func DebugLevel() *Slog {
-	return log.di(4).DebugLevel()
+	return log.di(5).DebugLevel()
 }
 
 // InfoLevel set the log level to info
 func InfoLevel() *Slog {
-	return log.di(4).InfoLevel()
+	return log.di(5).InfoLevel()
 }
 
 // ErrorLevel set the log level to error
 func ErrorLevel() *Slog {
-	return log.di(4).ErrorLevel()
+	return log.di(5).ErrorLevel()
 }
 
 // GoPanic logs a panic.
 func GoPanic(r interface{}, stack []byte, cont bool) {
-	log.di(4).GoPanic(r, stack, cont)
+	log.di(5).GoPanic(r, stack, cont)
 }
 
 // RecoverBufferStack amont of buffer to store the stack.
@@ -859,6 +879,6 @@ func Recover(notexit bool) {
 		buf := make([]byte, RecoverBufferStack)
 		n := runtime.Stack(buf, true)
 		buf = buf[:n]
-		log.di(4).GoPanic(r, buf, notexit)
+		log.di(5).GoPanic(r, buf, notexit)
 	}
 }

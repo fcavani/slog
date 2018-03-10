@@ -38,6 +38,19 @@ func (t *tags) Add(tags ...string) {
 	*t = append(*t, tags...)
 }
 
+func (t *tags) Have(tag string) bool {
+	if t == nil {
+		return false
+	}
+	a := *t
+	for _, tg := range a {
+		if tg == tag {
+			return true
+		}
+	}
+	return false
+}
+
 func (t *tags) Clean() {
 	if t == nil {
 		return
