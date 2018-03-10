@@ -97,7 +97,9 @@ func CommitSd(sl *Slog) {
 		// Fallback formatter and commiter.
 		// Send the log to some file normally the os.Stdout.
 		// Set slog Writter property to os.Stdout.
-		sl.Log.file = debugInfo(sl.Log.DiLevel)
+		if sl.Log.DoDi {
+			sl.Log.file = debugInfo(sl.Log.DiLevel)
+		}
 
 		buf, err := FallbackFormater(sl)
 		if err != nil {
