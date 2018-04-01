@@ -6,8 +6,8 @@ package slog
 
 type tags []string
 
-func newTags(legth int) *tags {
-	t := make(tags, 0, legth)
+func newTags(length int) *tags {
+	t := make(tags, 0, length)
 	return &t
 }
 

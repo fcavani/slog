@@ -173,7 +173,7 @@ func (l *Log) copy() *Log {
 	}
 }
 
-// debugInfo populates the Log struct with the debug informations.
+// debugInfo populates the Log struct with the debug information.
 func debugInfo(level int) (file string) {
 	var ok bool
 	var line int
@@ -250,7 +250,7 @@ type Slog struct {
 	Writter io.WriteCloser
 	// Log entry.
 	Log *Log
-	// Exiter is the function caled on Fatal and Panic methods.
+	// Exiter is the function called on Fatal and Panic methods.
 	Exiter  func(int)
 	logPool *sync.Pool
 	once    sync.Once
@@ -259,7 +259,7 @@ type Slog struct {
 }
 
 // Itoa converts a int to a byte. i is the interger to be converted, buf is a pointer
-// to the buffer that will receive the converted interge and wid is the number of
+// to the buffer that will receive the converted interger and wid is the number of
 // digits, if the digits is less than wid it will be filled with zeros.
 // This function come from std.
 func Itoa(buf *[]byte, i int, wid int) {
@@ -315,7 +315,7 @@ func init() {
 }
 
 // Init initializes the logger with domain and numLogs. numLogs is the number of
-// Slog structs in the pool.
+// Slog struct in the pool.
 func (l *Slog) Init(domain string, nl int) error {
 	numLogs = nl
 	if l.Log == nil {
@@ -786,7 +786,7 @@ func Tag(tags ...string) *Slog {
 	return log.Tag(tags...)
 }
 
-// Print prints a log entry to the destinie, this is determined by the commit
+// Print prints a log entry to the destine, this is determined by the commit
 // function.
 func Print(vals ...interface{}) {
 	log.di(fnLevelDiPlus1).Print(vals...)
@@ -872,7 +872,7 @@ func GoPanic(r interface{}, stack []byte, cont bool) {
 	log.di(fnLevelDiPlus1).GoPanic(r, stack, cont)
 }
 
-// RecoverBufferStack amont of buffer to store the stack.
+// RecoverBufferStack amount of buffer to store the stack.
 var RecoverBufferStack = 4096
 
 // Recover from panic and log the stack. If notexit is false, call l.Exiter(1),

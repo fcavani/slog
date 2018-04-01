@@ -113,7 +113,7 @@ func SdFormater(sl *Slog) ([]byte, error) {
 	return buf, nil
 }
 
-// FallbackFormater is called if systemd isn't avalible. Need to set Writter in
+// FallbackFormater is called if systemd isn't available. Need to set Writter in
 // Slog struct.
 func FallbackFormater(sl *Slog) ([]byte, error) {
 	buf := Pool.Get().([]byte)
@@ -160,7 +160,7 @@ var (
 	testing bool
 )
 
-// Testing enable testing in an eviroment without systemd.
+// Testing enable testing in an environment without systemd.
 func Testing(t bool) {
 	testing = t
 	sendToSd = systemd.Send
