@@ -152,7 +152,6 @@ func (l *Log) String() string {
 		l.Timestamp.Format(time.RFC3339Nano),
 		l.Tags.String(),
 		string(l.msg()),
-		//l.File,
 	)
 }
 
@@ -808,12 +807,12 @@ func Error(vals ...interface{}) {
 	log.di(fnLevelDiPlus1).Error(vals...)
 }
 
-// Error logs an error formated.
+// Errorf logs an error formated.
 func Errorf(str string, vals ...interface{}) {
 	log.di(fnLevelDiPlus1).Errorf(str, vals...)
 }
 
-// Error logs an error.
+// Errorln logs an error.
 func Errorln(vals ...interface{}) {
 	log.di(fnLevelDiPlus1).Errorln(vals...)
 }

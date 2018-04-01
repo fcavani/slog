@@ -146,9 +146,13 @@ func debuginfo(level int) (fnname, file, line string) {
 }
 
 var (
-	GID      string
-	UID      string
-	PID      string
+	// GID is process group ID
+	GID string
+	// UID is process user ID
+	UID string
+	// PID is process group ID
+	PID string
+	// Hostname is the hostname where the process is running
 	Hostname string
 
 	sendToSd func(string, systemd.Priority, map[string]string) error
