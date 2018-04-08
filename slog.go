@@ -771,6 +771,11 @@ func DebugInfo() {
 	log = log.Di().MakeDefault()
 }
 
+// NoDebugInfo disable debug impormation for all messages.
+func NoDebugInfo() {
+	log = log.NoDi().MakeDefault()
+}
+
 // Di add debug information to the log message.
 func Di() *Slog {
 	return log.Di()
