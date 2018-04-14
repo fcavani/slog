@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	golog "log"
 	"os"
 	"reflect"
@@ -17,6 +18,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/fcavani/e"
 	. "github.com/fcavani/slog"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var msg = "benchmark log test"
@@ -182,13 +185,13 @@ func TestPrint(t *testing.T) {
 	logger = logger.Di().MakeDefault()
 
 	logger.Tag("tag1", "tag2").Println(msg)
-	AssertLine(t, buf, "teste - info - tag1 tag2 - slog/slog_test.go:184 - benchmark log test")
+	AssertLine(t, buf, "teste - info - tag1 tag2 - slog/slog_test.go:187 - benchmark log test")
 
 	logger.Tag("tag1", "tag2").ErrorLevel().Di().Println(msg)
-	AssertLine(t, buf, "teste - error - tag1 tag2 - slog/slog_test.go:187 - benchmark log test")
+	AssertLine(t, buf, "teste - error - tag1 tag2 - slog/slog_test.go:190 - benchmark log test")
 
 	logger.Tag("tag1", "tag2").ErrorLevel().Println(msg)
-	AssertLine(t, buf, "teste - error - tag1 tag2 - slog/slog_test.go:190 - benchmark log test")
+	AssertLine(t, buf, "teste - error - tag1 tag2 - slog/slog_test.go:193 - benchmark log test")
 
 	logger.Tag("tag1", "tag2").ErrorLevel().NoDi().Println(msg)
 	AssertLine(t, buf, "teste - error - tag1 tag2 - benchmark log test")
@@ -196,7 +199,7 @@ func TestPrint(t *testing.T) {
 	logger = logger.DebugLevel().MakeDefault()
 
 	logger.Tag("tag1", "tag2").Println(msg)
-	AssertLine(t, buf, "teste - debug - tag1 tag2 - slog/slog_test.go:198 - benchmark log test")
+	AssertLine(t, buf, "teste - debug - tag1 tag2 - slog/slog_test.go:201 - benchmark log test")
 
 }
 
@@ -219,7 +222,7 @@ func TestPrintJSON(t *testing.T) {
 		Timestamp: "",
 		Tags:      []string{"tag1", "tag2"},
 		Message:   "benchmark log test",
-		File:      "slog/slog_test.go:215",
+		File:      "slog/slog_test.go:218",
 	})
 }
 
@@ -288,12 +291,12 @@ func TestFreeFunc(t *testing.T) {
 	AssertLine(t, buf, "teste - error - benchmark log test")
 
 	Di().Print(msg)
-	AssertLine(t, buf, "teste - info - slog/slog_test.go:290 - benchmark log test")
+	AssertLine(t, buf, "teste - info - slog/slog_test.go:293 - benchmark log test")
 	DebugInfo()
 	NoDi().Print(msg)
 	AssertLine(t, buf, "teste - info - benchmark log test")
 	Print(msg)
-	AssertLine(t, buf, "teste - info - slog/slog_test.go:295 - benchmark log test")
+	AssertLine(t, buf, "teste - info - slog/slog_test.go:298 - benchmark log test")
 }
 
 func TestFreeFuncPanic(t *testing.T) {
@@ -310,7 +313,7 @@ func TestFreeFuncPanic(t *testing.T) {
 			t.Fatal("recover fail")
 		}
 		if str != "benchmark log test" {
-			t.Fatal("didn't fail correctely:", str)
+			t.Fatal("didn't fail correctly:", str)
 		}
 		AssertLine(t, buf, "teste - panic - benchmark log test")
 	}()
@@ -332,7 +335,7 @@ func TestFreeFuncPanicf(t *testing.T) {
 			t.Fatal("recover fail")
 		}
 		if str != "benchmark log test" {
-			t.Fatal("didn't fail correctely:", str)
+			t.Fatal("didn't fail correctly:", str)
 		}
 		AssertLine(t, buf, "teste - panic - benchmark log test")
 	}()
@@ -389,7 +392,7 @@ func TestFreeFuncGoPanic(t *testing.T) {
 	AssertLine(t, buf, "teste - panic - 42")
 	DebugInfo()
 	GoPanic("panic test", []byte{}, true)
-	AssertLine(t, buf, "teste - panic - slog/slog_test.go:391 - panic test")
+	AssertLine(t, buf, "teste - panic - slog/slog_test.go:394 - panic test")
 }
 
 func TestCloseWriter(t *testing.T) {
@@ -576,24 +579,24 @@ func TestSetLevel(t *testing.T) {
 	logger = logger.Di().MakeDefault()
 
 	logger.Tag("tag1", "tag2").Println(msg)
-	AssertLine(t, buf, "teste - info - tag1 tag2 - slog/slog_test.go:578 - benchmark log test")
+	AssertLine(t, buf, "teste - info - tag1 tag2 - slog/slog_test.go:581 - benchmark log test")
 
 	logger.Tag("tag1", "tag2").ProtoLevel().Println(msg)
 	AssertEOF(t, buf)
 
 	logger.Tag("tag1", "tag2").SetLevel(ProtoPrio).ProtoLevel().Println(msg)
-	AssertLine(t, buf, "teste - protocol - tag1 tag2 - slog/slog_test.go:584 - benchmark log test")
+	AssertLine(t, buf, "teste - protocol - tag1 tag2 - slog/slog_test.go:587 - benchmark log test")
 
 	logger.Tag("tag1", "tag2").ProtoLevel().Println(msg)
 	AssertEOF(t, buf)
 
 	logger.Tag("tag1", "tag2").Println(msg)
-	AssertLine(t, buf, "teste - info - tag1 tag2 - slog/slog_test.go:590 - benchmark log test")
+	AssertLine(t, buf, "teste - info - tag1 tag2 - slog/slog_test.go:593 - benchmark log test")
 
 	logger = logger.SetLevel(ProtoPrio).MakeDefault()
 
 	logger.Tag("tag1", "tag2").ProtoLevel().Println(msg)
-	AssertLine(t, buf, "teste - protocol - tag1 tag2 - slog/slog_test.go:595 - benchmark log test")
+	AssertLine(t, buf, "teste - protocol - tag1 tag2 - slog/slog_test.go:598 - benchmark log test")
 }
 
 func TestFreeSetLevel(t *testing.T) {
@@ -643,4 +646,58 @@ func TestFilter(t *testing.T) {
 
 	logger.Tag("tag1").Println(msg)
 	AssertLine(t, buf, "teste - info - tag1 - benchmark log test")
+}
+
+// func BenchmarkZapSugarPrintf(b *testing.B) {
+// 	sugar := zap.NewExample().Sugar()
+// 	defer sugar.Sync()
+// 	b.ResetTimer()
+// 	for i := 0; i < b.N; i++ {
+// 		sugar.Infof("failed to fetch URL:", zap.String("url", "http://example.com"))
+// 	}
+// }
+
+func BenchmarkZapLoggerPrintf(b *testing.B) {
+	logger := zap.New(
+		zapcore.NewCore(
+			zapcore.NewJSONEncoder(zap.NewProductionConfig().EncoderConfig),
+			&Discarder{},
+			zap.DebugLevel,
+		))
+	defer logger.Sync()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		logger.Info("failed to fetch URL:", zap.String("url", "http://example.com"))
+	}
+}
+
+// A Syncer is a spy for the Sync portion of zapcore.WriteSyncer.
+type Syncer struct {
+	err    error
+	called bool
+}
+
+// SetError sets the error that the Sync method will return.
+func (s *Syncer) SetError(err error) {
+	s.err = err
+}
+
+// Sync records that it was called, then returns the user-supplied error (if
+// any).
+func (s *Syncer) Sync() error {
+	s.called = true
+	return s.err
+}
+
+// Called reports whether the Sync method was called.
+func (s *Syncer) Called() bool {
+	return s.called
+}
+
+// A Discarder sends all writes to ioutil.Discard.
+type Discarder struct{ Syncer }
+
+// Write implements io.Writer.
+func (d *Discarder) Write(b []byte) (int, error) {
+	return ioutil.Discard.Write(b)
 }
