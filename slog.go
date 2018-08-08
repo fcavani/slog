@@ -724,7 +724,7 @@ func init() {
 		println("SLOG: Fail to start log:", err)
 		os.Exit(1)
 	}
-	log = log.Di()
+	log = log.Di().MakeDefault()
 }
 
 // SetOutput sets the commit out put to w.
