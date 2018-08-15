@@ -701,3 +701,20 @@ type Discarder struct{ Syncer }
 func (d *Discarder) Write(b []byte) (int, error) {
 	return ioutil.Discard.Write(b)
 }
+
+func TestWriter(t *testing.T) {
+	buf := &writerCloser{bytes.NewBuffer([]byte{})}
+
+	logger := &Slog{
+		Writter: buf,
+		Level:   DebugPrio,
+	}
+	err := logger.Init("teste", 1)
+	if err != nil {
+		t.Fatal(e.Trace(e.Forward(err)))
+	}
+
+	logger.Write([]byte("teste "))
+	logger.Write([]byte("teste\n"))
+	AssertLine(t, buf, "teste - info - teste teste")
+}

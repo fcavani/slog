@@ -256,6 +256,8 @@ type Slog struct {
 	once    sync.Once
 	Lck     *sync.Mutex
 	Cp      bool
+	wbuf    []byte
+	wlck    sync.Mutex
 }
 
 // Itoa converts a int to a byte. i is the interger to be converted, buf is a pointer
@@ -705,6 +707,25 @@ func (l *Slog) GoPanic(r interface{}, stack []byte, cont bool) {
 	}
 }
 
+func (l *Slog) Write(p []byte) (n int, err error) {
+	l.wlck.Lock()
+	defer l.wlck.Unlock()
+	l.wbuf = append(l.wbuf, p...)
+	for i, c := range l.wbuf {
+		if c != '\n' {
+			continue
+		}
+		tolog := l.wbuf[:i]
+		l.Print(string(tolog))
+		if i+1 < len(l.wbuf) {
+			l.wbuf = l.wbuf[i+1:]
+		} else {
+			l.wbuf = l.wbuf[:0]
+		}
+	}
+	return len(p), nil
+}
+
 // Close the logger.
 func (l *Slog) Close() error {
 	if l.Writter == nil {
@@ -725,6 +746,11 @@ func init() {
 		os.Exit(1)
 	}
 	log = log.Di().MakeDefault()
+}
+
+// DefaultLogger return the default logger. Mainly to be used with Writer interface.
+func DefaultLogger() *Slog {
+	return log
 }
 
 // SetOutput sets the commit out put to w.
