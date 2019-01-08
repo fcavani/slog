@@ -242,11 +242,11 @@ type Slog struct {
 	Level Level
 	// Filter filter the log entry. If return true the log entry pass the filter.
 	Filter func(l *Slog) bool
-	// Format a readable messagem from the log information
+	// Format a readable message from the log information
 	Formatter func(l *Slog) ([]byte, error)
 	// Commit sent entry to somewhere.
 	Commit func(l *Slog)
-	// Writter can be a destiny in the Commit function.
+	// Writer can be a destiny in the Commit function.
 	Writter io.WriteCloser
 	// Log entry.
 	Log *Log
@@ -568,7 +568,7 @@ func (l *Slog) commit() {
 	l.Commit(l)
 }
 
-// Print prints a log entry to the destinie, this is determined by the commit
+// Print prints a log entry to the destine, this is determined by the commit
 // function.
 func (l *Slog) Print(v ...interface{}) {
 	l = l.copy()
