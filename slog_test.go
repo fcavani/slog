@@ -77,7 +77,7 @@ func TestWrongLevelString(t *testing.T) {
 			t.Fatal("recover fail")
 		}
 		if str != "this isn't a priority" {
-			t.Fatal("didn't fail correctely")
+			t.Fatal("didn't fail correctly")
 		}
 	}()
 
@@ -95,7 +95,7 @@ func TestWrongLevelByte(t *testing.T) {
 			t.Fatal("recover fail")
 		}
 		if str != "this isn't a priority" {
-			t.Fatal("didn't fail correctely")
+			t.Fatal("didn't fail correctly")
 		}
 	}()
 
