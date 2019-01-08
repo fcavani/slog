@@ -37,7 +37,4 @@ func TestSdPrint(t *testing.T) {
 	logger.DebugLevel().Tag("tag1", "tag2").Println(msg)
 	logger.InfoLevel().Tag("tag1", "tag2").Println(msg)
 	logger.ErrorLevel().Tag("tag1", "tag2").Println(msg)
-	//logger.FatalLevel().Tag("tag1", "tag2").Println(msg)
-	//logger.PanicLevel().Tag("tag1", "tag2").Println(msg)
-
 }
