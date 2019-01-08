@@ -755,10 +755,6 @@ func DefaultLogger() *Slog {
 
 // SetOutput sets the commit out put to w.
 func SetOutput(domain string, level Level, w io.WriteCloser, commiter func(sl *Slog), formatter func(l *Slog) ([]byte, error), nl int) error {
-	// level, err := ParseLevel(lstr)
-	// if err != nil {
-	// 	return e.Forward(err)
-	// }
 	log = &Slog{
 		Commit:    commiter,
 		Formatter: formatter,
