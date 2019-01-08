@@ -5,7 +5,7 @@
 
 Slog (slow log) is a attempt to make a logger with more features than the standard go logger
 but with similar performance. The logger feature levels, tags, flexibility to
-implement differents formatters and committers. It´s simple and easy to
+implement diferentes formatters and committers. It´s simple and easy to
 use. Import the package, use the free functions and you will have a logger
 to the console. If you want to log to a file change the writer.
 
@@ -13,7 +13,7 @@ to the console. If you want to log to a file change the writer.
 
 You can see bellow a simple comparison of some loggers.
 First is the baseline logger, the go logger, with is simple but fast.
-The others loggers with more functionalities have a slower performance,
+The others loggers with more functionalities have slower performance,
 as expected, but slog without debug information (Di) have a good set of features
 with a performance better than Logrus.
 
@@ -54,4 +54,4 @@ wrong happen.
 ## Conclusion
 
 Slog is a logger with more features and have a good performance but I need
-to make some optimizations to make it more fast.
+to make some optimizations to make it faster.
