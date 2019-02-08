@@ -313,7 +313,7 @@ func TestFreeFuncPanic(t *testing.T) {
 			t.Fatal("recover fail")
 		}
 		if str != "benchmark log test" {
-			t.Fatal("didn't fail correctly:", str)
+			t.Fatalf("didn't fail correctly: \"%v\"", str)
 		}
 		AssertLine(t, buf, "teste - panic - benchmark log test")
 	}()
@@ -335,7 +335,7 @@ func TestFreeFuncPanicf(t *testing.T) {
 			t.Fatal("recover fail")
 		}
 		if str != "benchmark log test" {
-			t.Fatal("didn't fail correctly:", str)
+			t.Fatalf("didn't fail correctly: \"%v\"", str)
 		}
 		AssertLine(t, buf, "teste - panic - benchmark log test")
 	}()
@@ -357,7 +357,7 @@ func TestFreeFuncPanicln(t *testing.T) {
 			t.Fatal("recover fail")
 		}
 		if str != "benchmark log test" {
-			t.Fatal("didn't fail correctely:", str)
+			t.Fatalf("didn't fail correctly: \"%v\"", str)
 		}
 		AssertLine(t, buf, "teste - panic - benchmark log test")
 	}()
@@ -717,4 +717,22 @@ func TestWriter(t *testing.T) {
 	logger.Write([]byte("teste "))
 	logger.Write([]byte("teste\n"))
 	AssertLine(t, buf, "teste - info - teste teste")
+}
+
+func TestColors(t *testing.T) {
+	logger := &Slog{
+		Level: ProtoPrio,
+	}
+	err := logger.Init("teste", 1)
+	if err != nil {
+		t.Fatal(e.Trace(e.Forward(err)))
+	}
+
+	logger = logger.Di().MakeDefault()
+	logger.Colors(true)
+
+	logger.InfoLevel().Print("info color")
+	logger.Error("error color")
+	logger.DebugLevel().Print("debug color")
+	logger.ProtoLevel().Print("protocol color")
 }

@@ -38,7 +38,7 @@ var closeing = []byte("\"}\n")
 
 // JSON convert a log entry to json.
 func JSON(l *Slog) ([]byte, error) {
-	m := strings.Replace(l.Log.Message, "\n", " ", -1)
+	m := strings.Replace(l.Log.FormatMessage(), "\n", " ", -1)
 	if len(m) > 0 && m[len(m)-1] == ' ' {
 		m = m[:len(m)-1]
 	}

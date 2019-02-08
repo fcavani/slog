@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/fcavani/e"
+	"github.com/logrusorgru/aurora"
 )
 
 const (
@@ -105,6 +106,27 @@ func (l Level) String() string {
 	}
 }
 
+func (l Level) Color(au aurora.Aurora) func(interface{}) aurora.Value {
+	switch l {
+	case ProtoPrio:
+		return au.Cyan
+	case DebugPrio:
+		return au.Bold
+	case InfoPrio:
+		return au.Green
+	case ErrorPrio:
+		return au.Red
+	case FatalPrio:
+		return au.Magenta
+	case PanicPrio:
+		return nil
+	case NoPrio:
+		return nil
+	default:
+		panic("this isn't a priority")
+	}
+}
+
 // ParseLevel parses the string form of a level to the type Level.
 func ParseLevel(level string) (Level, error) {
 	switch level {
@@ -134,7 +156,7 @@ type Log struct {
 	Priority  Level
 	Timestamp time.Time
 	Tags      *tags
-	Message   string
+	msg       string
 	DiLevel   int
 	DoDi      bool
 	zoneHour  int
@@ -144,6 +166,42 @@ type Log struct {
 	file      string
 }
 
+func (l *Log) Message(str string) {
+	l.msg = str
+}
+
+func (l *Log) Coloring(au aurora.Aurora) string {
+	if au == nil {
+		return l.msg
+	}
+	fn := l.Priority.Color(au)
+	if fn == nil {
+		return l.msg
+	}
+	return fn(l.msg).String()
+}
+
+func (l *Log) formatMessage(au aurora.Aurora) []byte {
+	msg := l.Coloring(au)
+	if len(msg) == 0 {
+		return []byte{}
+	}
+	if msg[len(msg)-1] != '\n' {
+		msg += "\n"
+	}
+	return []byte(msg)
+}
+
+func (l *Log) FormatMessage() string {
+	if len(l.msg) == 0 {
+		return ""
+	}
+	if l.msg[len(l.msg)-1] != '\n' {
+		l.msg += "\n"
+	}
+	return l.msg
+}
+
 // String print the Log struct contents.
 func (l *Log) String() string {
 	return fmt.Sprintf("Domain: %v\nPriority: %v\nTimestamp: %v\nTags: %v\nMessage: %v\n",
@@ -151,7 +209,7 @@ func (l *Log) String() string {
 		l.Priority.String(),
 		l.Timestamp.Format(time.RFC3339Nano),
 		l.Tags.String(),
-		string(l.msg()),
+		l.FormatMessage(),
 	)
 }
 
@@ -163,7 +221,7 @@ func (l *Log) copy() *Log {
 		Priority:  l.Priority,
 		Timestamp: l.Timestamp,
 		Tags:      l.Tags.copy(),
-		Message:   l.Message,
+		msg:       l.msg,
 		DiLevel:   l.DiLevel,
 		DoDi:      l.DoDi,
 		zoneHour:  l.zoneHour,
@@ -218,17 +276,6 @@ func (l *Log) SetTimeZone() {
 	Itoa(&l.zoneBuf, l.zoneMin, 2)
 }
 
-func (l *Log) msg() []byte {
-	msg := l.Message
-	if len(msg) == 0 {
-		return []byte{}
-	}
-	if msg[len(msg)-1] != '\n' {
-		msg += "\n"
-	}
-	return []byte(msg)
-}
-
 func (l *Log) di(deep int) {
 	if l.DiLevel > 0 {
 		return
@@ -251,7 +298,10 @@ type Slog struct {
 	// Log entry.
 	Log *Log
 	// Exiter is the function called on Fatal and Panic methods.
-	Exiter  func(int)
+	Exiter func(int)
+	// Enable coloring of the log entry.
+	colors  bool
+	au      aurora.Aurora
 	logPool *sync.Pool
 	once    sync.Once
 	Lck     *sync.Mutex
@@ -341,6 +391,8 @@ func (l *Slog) Init(domain string, nl int) error {
 		l.Log.Domain = []byte("Slog")
 	}
 
+	l.au = aurora.NewAurora(l.colors)
+
 	if l.Lck == nil {
 		l.Lck = new(sync.Mutex)
 	}
@@ -364,7 +416,7 @@ func (l *Slog) Init(domain string, nl int) error {
 				buf = append(buf, []byte(sl.Log.file)...)
 				buf = append(buf, sep...)
 			}
-			buf = append(buf, sl.Log.msg()...)
+			buf = append(buf, sl.Log.formatMessage(sl.au)...)
 			return buf, nil
 		}
 	}
@@ -414,7 +466,7 @@ func (l *Slog) Init(domain string, nl int) error {
 				DiLevel:  0,
 			}
 			newLog.SetTimeZone()
-			return &Slog{
+			sl := &Slog{
 				Level:     l.Level,
 				Formatter: l.Formatter,
 				Commit:    l.Commit,
@@ -424,7 +476,10 @@ func (l *Slog) Init(domain string, nl int) error {
 				Log:       newLog,
 				Lck:       l.Lck,
 				logPool:   l.logPool,
+				colors:    l.colors,
 			}
+			sl.au = aurora.NewAurora(sl.colors)
+			return sl
 		} //New
 		for i := 0; i < numLogs; i++ {
 			newLog := &Log{
@@ -435,7 +490,7 @@ func (l *Slog) Init(domain string, nl int) error {
 				DiLevel:  0,
 			}
 			newLog.SetTimeZone()
-			l.logPool.Put(&Slog{
+			sl := &Slog{
 				Level:     l.Level,
 				Formatter: l.Formatter,
 				Commit:    l.Commit,
@@ -445,7 +500,10 @@ func (l *Slog) Init(domain string, nl int) error {
 				Log:       newLog,
 				Lck:       l.Lck,
 				logPool:   l.logPool,
-			})
+				colors:    l.colors,
+			}
+			sl.au = aurora.NewAurora(sl.colors)
+			l.logPool.Put(sl)
 		}
 	})
 	return nil
@@ -460,6 +518,8 @@ func (l *Slog) copy() *Slog {
 	out.Log = l.Log.copy()
 	out.Exiter = l.Exiter
 	out.Cp = true
+	out.colors = l.colors
+	out.au = aurora.NewAurora(l.colors)
 	return out
 }
 
@@ -471,7 +531,14 @@ func (l *Slog) dup() *Slog {
 	out.Commit = l.Commit
 	out.Log = l.Log.copy()
 	out.Exiter = l.Exiter
+	out.colors = l.colors
+	out.au = aurora.NewAurora(l.colors)
 	return out
+}
+
+func (l *Slog) Colors(b bool) {
+	l.colors = b
+	l.au = aurora.NewAurora(b)
 }
 
 // MakeDefault turn the behavior of actual chain of functions into default to be
@@ -573,7 +640,7 @@ func (l *Slog) commit() {
 func (l *Slog) Print(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
-	l.Log.Message = fmt.Sprint(v...)
+	l.Log.Message(fmt.Sprint(v...))
 	l.commit()
 }
 
@@ -581,7 +648,7 @@ func (l *Slog) Print(v ...interface{}) {
 func (l *Slog) Printf(s string, v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
-	l.Log.Message = fmt.Sprintf(s, v...)
+	l.Log.Message(fmt.Sprintf(s, v...))
 	l.commit()
 }
 
@@ -589,7 +656,7 @@ func (l *Slog) Printf(s string, v ...interface{}) {
 func (l *Slog) Println(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
-	l.Log.Message = fmt.Sprintln(v...)
+	l.Log.Message(fmt.Sprintln(v...))
 	l.commit()
 }
 
@@ -598,7 +665,7 @@ func (l *Slog) Error(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
 	l.Log.Priority = ErrorPrio
-	l.Log.Message = fmt.Sprint(v...)
+	l.Log.Message(fmt.Sprint(v...))
 	l.commit()
 }
 
@@ -607,7 +674,7 @@ func (l *Slog) Errorf(s string, v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
 	l.Log.Priority = ErrorPrio
-	l.Log.Message = fmt.Sprintf(s, v...)
+	l.Log.Message(fmt.Sprintf(s, v...))
 	l.commit()
 }
 
@@ -616,7 +683,7 @@ func (l *Slog) Errorln(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
 	l.Log.Priority = ErrorPrio
-	l.Log.Message = fmt.Sprintln(v...)
+	l.Log.Message(fmt.Sprintln(v...))
 	l.commit()
 }
 
@@ -624,7 +691,7 @@ func (l *Slog) Errorln(v ...interface{}) {
 func (l *Slog) Fatal(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
-	l.Log.Message = fmt.Sprint(v...)
+	l.Log.Message(fmt.Sprint(v...))
 	l.Log.Priority = FatalPrio
 	l.commit()
 	l.Writter.Close()
@@ -635,7 +702,7 @@ func (l *Slog) Fatal(v ...interface{}) {
 func (l *Slog) Fatalf(s string, v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
-	l.Log.Message = fmt.Sprintf(s, v...)
+	l.Log.Message(fmt.Sprintf(s, v...))
 	l.Log.Priority = FatalPrio
 	l.commit()
 	l.Writter.Close()
@@ -646,7 +713,7 @@ func (l *Slog) Fatalf(s string, v ...interface{}) {
 func (l *Slog) Fatalln(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
-	l.Log.Message = fmt.Sprintln(v...)
+	l.Log.Message(fmt.Sprintln(v...))
 	l.Log.Priority = FatalPrio
 	l.commit()
 	l.Writter.Close()
@@ -657,48 +724,52 @@ func (l *Slog) Fatalln(v ...interface{}) {
 func (l *Slog) Panic(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
-	l.Log.Message = fmt.Sprint(v...)
+	msg := fmt.Sprint(v...)
+	l.Log.Message(msg)
 	l.Log.Priority = PanicPrio
 	l.commit()
 	l.Writter.Close()
-	panic(l.Log.Message)
+	panic(msg)
 }
 
 // Panicf print a formated log entry to the destine and call panic.
 func (l *Slog) Panicf(s string, v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
-	l.Log.Message = fmt.Sprintf(s, v...)
+	msg := fmt.Sprintf(s, v...)
+	l.Log.Message(msg)
 	l.Log.Priority = PanicPrio
 	l.commit()
 	l.Writter.Close()
-	panic(l.Log.Message)
+	panic(msg)
 }
 
 // Panicln print a log entry to the destine and call panic.
 func (l *Slog) Panicln(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
-	l.Log.Message = fmt.Sprintln(v...)
+	msg := fmt.Sprint(v...)
+	l.Log.Message(msg)
 	l.Log.Priority = PanicPrio
 	l.commit()
 	l.Writter.Close()
-	panic(l.Log.Message[:len(l.Log.Message)-1])
+	panic(msg)
 }
 
 // GoPanic is use when recover from a panic and the panic must be logged
 func (l *Slog) GoPanic(r interface{}, stack []byte, cont bool) {
+	var msg string
 	l = l.copy()
 	l.Log.di(fnLevelDi)
 	switch v := r.(type) {
 	case string:
-		l.Log.Message = v + "\n"
+		msg = v + "\n"
 	case fmt.Stringer:
-		l.Log.Message = v.String() + "\n"
+		msg = v.String() + "\n"
 	default:
-		l.Log.Message = fmt.Sprintln(r)
+		msg = fmt.Sprintln(r)
 	}
-	l.Log.Message += "\n{" + string(stack) + "}"
+	l.Log.Message(msg + "\n{" + string(stack) + "}")
 	l.Log.Priority = PanicPrio
 	l.commit()
 	if !cont {

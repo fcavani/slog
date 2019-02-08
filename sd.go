@@ -109,7 +109,7 @@ func CommitSd(sl *Slog) {
 // SdFormater format the mensagem for systemd journal
 func SdFormater(sl *Slog) ([]byte, error) {
 	buf := Pool.Get().([]byte)
-	buf = append(buf, sl.Log.msg()...)
+	buf = append(buf, sl.Log.FormatMessage()...)
 	return buf, nil
 }
 
@@ -131,7 +131,7 @@ func FallbackFormater(sl *Slog) ([]byte, error) {
 		buf = append(buf, []byte(sl.Log.file)...)
 		buf = append(buf, sep...)
 	}
-	buf = append(buf, sl.Log.msg()...)
+	buf = append(buf, []byte(sl.Log.FormatMessage())...)
 	return buf, nil
 }
 

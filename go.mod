@@ -2,6 +2,7 @@ module github.com/fcavani/slog
 
 require (
 	github.com/fcavani/e v0.0.0-20190108091500-2732044eef57
+	github.com/logrusorgru/aurora v0.0.0-20181002194514-a7b3b318ed4e
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/sirupsen/logrus v1.3.0
 	go.uber.org/atomic v1.3.2 // indirect
