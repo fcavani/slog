@@ -663,7 +663,7 @@ func (l *Slog) Printf(s string, v ...interface{}) {
 func (l *Slog) Println(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
-	l.Log.Message(fmt.Sprintln(v...))
+	l.Log.Message(fmt.Sprint(v...))
 	l.commit()
 }
 
@@ -690,7 +690,7 @@ func (l *Slog) Errorln(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
 	l.Log.Priority = ErrorPrio
-	l.Log.Message(fmt.Sprintln(v...))
+	l.Log.Message(fmt.Sprint(v...))
 	l.commit()
 }
 
@@ -720,7 +720,7 @@ func (l *Slog) Fatalf(s string, v ...interface{}) {
 func (l *Slog) Fatalln(v ...interface{}) {
 	l = l.copy()
 	l.Log.di(fnLevelDi)
-	l.Log.Message(fmt.Sprintln(v...))
+	l.Log.Message(fmt.Sprint(v...))
 	l.Log.Priority = FatalPrio
 	l.commit()
 	l.Writter.Close()
