@@ -106,6 +106,7 @@ func (l Level) String() string {
 	}
 }
 
+// Color return a function to color the message based in the log level.
 func (l Level) Color(au aurora.Aurora) func(interface{}) aurora.Value {
 	switch l {
 	case ProtoPrio:
@@ -166,10 +167,12 @@ type Log struct {
 	file      string
 }
 
+// Message sets the log message.
 func (l *Log) Message(str string) {
 	l.msg = str
 }
 
+// Coloring color the message.
 func (l *Log) Coloring(au aurora.Aurora) string {
 	if au == nil {
 		return l.msg
@@ -192,6 +195,7 @@ func (l *Log) formatMessage(au aurora.Aurora) []byte {
 	return []byte(msg)
 }
 
+// FormatMessage simple format the message without color.
 func (l *Log) FormatMessage() string {
 	if len(l.msg) == 0 {
 		return ""
@@ -536,6 +540,7 @@ func (l *Slog) dup() *Slog {
 	return out
 }
 
+// Colors enable or disable coloring of messages in log.
 func (l *Slog) Colors(b bool) {
 	l.colors = b
 	l.au = aurora.NewAurora(b)
