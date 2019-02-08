@@ -736,3 +736,18 @@ func TestColors(t *testing.T) {
 	logger.DebugLevel().Print("debug color")
 	logger.ProtoLevel().Print("protocol color")
 }
+
+func TestColorsFreeFunction(t *testing.T) {
+	err := SetOutput("teste", ProtoPrio, os.Stdout, nil, nil, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	DebugInfo()
+	Colors(true)
+
+	InfoLevel().Print("info color")
+	Error("error color")
+	DebugLevel().Print("debug color")
+	ProtoLevel().Print("protocol color")
+}
