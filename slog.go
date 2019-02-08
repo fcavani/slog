@@ -879,6 +879,11 @@ func NoDi() *Slog {
 	return log.NoDi()
 }
 
+// Colors enables or disables log message coloring.
+func Colors(b bool) {
+	log.Colors(b)
+}
+
 // Tag attach tags to the log entry
 func Tag(tags ...string) *Slog {
 	return log.Tag(tags...)
