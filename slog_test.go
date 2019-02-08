@@ -729,7 +729,7 @@ func TestColors(t *testing.T) {
 	}
 
 	logger = logger.Di().MakeDefault()
-	logger.Colors(true)
+	logger = logger.Colors(true)
 
 	logger.InfoLevel().Print("info color")
 	logger.Error("error color")

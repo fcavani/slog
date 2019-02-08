@@ -541,9 +541,11 @@ func (l *Slog) dup() *Slog {
 }
 
 // Colors enable or disable coloring of messages in log.
-func (l *Slog) Colors(b bool) {
+func (l *Slog) Colors(b bool) *Slog {
+	l = l.copy()
 	l.colors = b
 	l.au = aurora.NewAurora(b)
+	return l
 }
 
 // MakeDefault turn the behavior of actual chain of functions into default to be
@@ -886,7 +888,7 @@ func NoDi() *Slog {
 
 // Colors enables or disables log message coloring.
 func Colors(b bool) {
-	log.Colors(b)
+	log = log.Colors(b).MakeDefault()
 }
 
 // Tag attach tags to the log entry
