@@ -751,3 +751,15 @@ func TestColorsFreeFunction(t *testing.T) {
 	DebugLevel().Print("debug color")
 	ProtoLevel().Print("protocol color")
 }
+
+func TestFreeDI(t *testing.T) {
+	buf := &writerCloser{bytes.NewBuffer([]byte{})}
+
+	err := SetOutput("teste", ProtoPrio, buf, nil, nil, 100)
+	if err != nil {
+		t.Fatal(e.Trace(e.Forward(err)))
+	}
+
+	Di().ProtoLevel().Println(msg)
+	AssertLine(t, buf, "teste - protocol - slog/slog_test.go:763 - benchmark log test")
+}

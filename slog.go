@@ -878,12 +878,12 @@ func NoDebugInfo() {
 
 // Di add debug information to the log message.
 func Di() *Slog {
-	return log.Di()
+	return log.Di().MakeDefault()
 }
 
 // NoDi disable debug information for this log entry.
 func NoDi() *Slog {
-	return log.NoDi()
+	return log.NoDi().MakeDefault()
 }
 
 // Colors enables or disables log message coloring.
