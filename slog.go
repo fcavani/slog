@@ -281,7 +281,7 @@ func (l *Log) SetTimeZone() {
 }
 
 func (l *Log) di(deep int) {
-	if l.DiLevel > 0 {
+	if l.DiLevel >= deep {
 		return
 	}
 	l.DiLevel = deep
