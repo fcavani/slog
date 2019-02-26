@@ -823,7 +823,7 @@ func init() {
 		println("SLOG: Fail to start log:", err)
 		os.Exit(1)
 	}
-	log = log.Di().MakeDefault().di(fnLevelDiPlus1)
+	log = log.di(fnLevelDiPlus1).Di().MakeDefault()
 }
 
 // DefaultLogger return the default logger. Mainly to be used with Writer interface.
