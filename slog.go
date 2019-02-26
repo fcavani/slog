@@ -378,6 +378,8 @@ func (l *Slog) Init(domain string, nl int) error {
 		l.Log = &Log{
 			Priority: InfoPrio,
 			Tags:     newTags(numTags),
+			DiLevel:  fnLevelDi,
+			DoDi:     false,
 		}
 		l.Log.Domain = []byte(domain)
 		if domain == "" {
@@ -607,9 +609,10 @@ func (l *Slog) Di() *Slog {
 }
 
 func (l *Slog) di(deep int) *Slog {
-	l = l.dup()
-	l.Log.di(deep)
-	return l
+	out := l.dup()
+	out.Log.di(deep)
+	out.Cp = false
+	return out
 }
 
 // NoDi disable debug info.
@@ -823,7 +826,6 @@ func init() {
 		println("SLOG: Fail to start log:", err)
 		os.Exit(1)
 	}
-	log = log.di(fnLevelDiPlus1).Di().MakeDefault()
 }
 
 // DefaultLogger return the default logger. Mainly to be used with Writer interface.
@@ -878,7 +880,7 @@ func NoDebugInfo() {
 
 // Di add debug information to the log message.
 func Di() *Slog {
-	return log.Di().MakeDefault()
+	return log.Di().MakeDefault().di(fnLevelDi)
 }
 
 // NoDi disable debug information for this log entry.
@@ -893,7 +895,7 @@ func Colors(b bool) {
 
 // Tag attach tags to the log entry
 func Tag(tags ...string) *Slog {
-	return log.Tag(tags...)
+	return log.Tag(tags...).di(fnLevelDi)
 }
 
 // Print prints a log entry to the destine, this is determined by the commit
@@ -959,22 +961,22 @@ func Panicln(vals ...interface{}) {
 
 // ProtoLevel set the log level to protocol
 func ProtoLevel() *Slog {
-	return log.di(fnLevelDiPlus1).ProtoLevel()
+	return log.ProtoLevel().di(fnLevelDi)
 }
 
 // DebugLevel set the log level to debug
 func DebugLevel() *Slog {
-	return log.di(fnLevelDiPlus1).DebugLevel()
+	return log.DebugLevel().di(fnLevelDi)
 }
 
 // InfoLevel set the log level to info
 func InfoLevel() *Slog {
-	return log.di(fnLevelDiPlus1).InfoLevel()
+	return log.InfoLevel().di(fnLevelDi)
 }
 
 // ErrorLevel set the log level to error
 func ErrorLevel() *Slog {
-	return log.di(fnLevelDiPlus1).ErrorLevel()
+	return log.ErrorLevel().di(fnLevelDi)
 }
 
 // GoPanic logs a panic.

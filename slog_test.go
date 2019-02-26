@@ -760,6 +760,8 @@ func TestFreeDI(t *testing.T) {
 		t.Fatal(e.Trace(e.Forward(err)))
 	}
 
-	Di().ProtoLevel().Println(msg)
-	AssertLine(t, buf, "teste - protocol - slog/slog_test.go:763 - benchmark log test")
+	DebugInfo()
+
+	ProtoLevel().Tag("teste").Println(msg)
+	AssertLine(t, buf, "teste - protocol - teste - slog/slog_test.go:765 - benchmark log test")
 }
