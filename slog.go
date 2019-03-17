@@ -797,7 +797,7 @@ func (l *Slog) Write(p []byte) (n int, err error) {
 			continue
 		}
 		tolog := l.wbuf[:i]
-		l.Print(string(tolog))
+		l.di(fnLevelDiPlus1).Print(string(tolog))
 		if i+1 < len(l.wbuf) {
 			l.wbuf = l.wbuf[i+1:]
 		} else {
